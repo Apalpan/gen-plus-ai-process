@@ -63,7 +63,7 @@ function ProcessNodeImpl({ data }: NodeProps<ProcessNodeFlowData>) {
       )}
       style={{
         borderColor: data.isSelected ? '#4D84FF' : meta.ring,
-        background: `linear-gradient(180deg, ${meta.tint} 0%, rgba(6,20,42,0.92) 70%)`,
+        background: `linear-gradient(180deg, ${meta.tint} 0%, var(--node-base) 64%)`,
       }}
     >
       <Handle type="target" position={Position.Left} className="!h-2.5 !w-2.5" />

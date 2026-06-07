@@ -5,12 +5,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        // GEN+ navy / blue scale
+        // Foreground token (theme-aware) — overrides Tailwind `white`.
+        // Use `oncolor` for text that sits on a colored fill in both themes.
+        white: 'rgb(var(--fg) / <alpha-value>)',
+        oncolor: '#ffffff',
+        // GEN+ navy / blue scale (theme-aware surfaces)
         ink: {
-          900: '#040F20', // fondo oscuro principal
-          850: '#06142A', // surface
-          800: '#071A36', // overlays
-          700: '#0A244C', // surface raised / navy
+          900: 'rgb(var(--ink-900) / <alpha-value>)', // app background
+          850: 'rgb(var(--ink-850) / <alpha-value>)', // surface
+          800: 'rgb(var(--ink-800) / <alpha-value>)', // overlays
+          700: 'rgb(var(--ink-700) / <alpha-value>)', // surface raised
         },
         navy: {
           900: '#0E2A6B', // deep navy
@@ -21,9 +25,9 @@ export default {
           600: '#1E5CE8', // blue bright
           500: '#2165FF', // blue primary
           400: '#4D84FF', // blue light
-          300: '#6A98FF', // blue sky
-          200: '#BACFFF', // blue pale
-          100: '#E9F0FF', // blue ice
+          300: 'rgb(var(--brand-300) / <alpha-value>)', // blue sky (theme-aware text)
+          200: 'rgb(var(--brand-200) / <alpha-value>)', // blue pale (theme-aware text)
+          100: 'rgb(var(--brand-100) / <alpha-value>)', // blue ice (theme-aware text)
         },
         // semantic accents for node types
         accent: {

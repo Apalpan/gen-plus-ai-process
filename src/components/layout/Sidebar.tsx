@@ -1,6 +1,7 @@
 import {
   Sparkles,
   LayoutTemplate,
+  Library,
   Gauge,
   ShieldAlert,
   Workflow,
@@ -20,6 +21,7 @@ import { cn } from '../../lib/cn';
 const items: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: 'builder', label: 'Constructor IA', icon: Sparkles },
   { id: 'templates', label: 'Plantillas', icon: LayoutTemplate },
+  { id: 'library', label: 'Mis procesos', icon: Library },
   { id: 'metrics', label: 'Métricas', icon: Gauge },
   { id: 'risks', label: 'Riesgos', icon: ShieldAlert },
   { id: 'automations', label: 'Automatizaciones', icon: Workflow },

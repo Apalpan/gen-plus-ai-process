@@ -1,9 +1,8 @@
-import { Download, Save, Sun, Moon, Github, Star } from 'lucide-react';
+import { useState } from 'react';
+import { Download, Save, Sun, Moon, Github, Star, Check } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { Logo } from '../brand/Logo';
 import { Button } from '../ui/Button';
-import { downloadText, slugify } from '../../lib/download';
-import { toJSON } from '../../lib/jsonExporter';
 
 export function Topbar() {
   const process = useProcessStore((s) => s.process);
@@ -11,8 +10,14 @@ export function Topbar() {
   const theme = useProcessStore((s) => s.theme);
   const toggleTheme = useProcessStore((s) => s.toggleTheme);
   const setSection = useProcessStore((s) => s.setSection);
+  const saveToLibrary = useProcessStore((s) => s.saveToLibrary);
+  const [saved, setSaved] = useState(false);
 
-  const save = () => downloadText(`${slugify(process.title)}.json`, toJSON(process), 'application/json');
+  const save = () => {
+    saveToLibrary();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[var(--gen-border)] bg-ink-850/70 px-3 backdrop-blur">
@@ -34,8 +39,8 @@ export function Topbar() {
       <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Cambiar tema" title="Tema claro/oscuro">
         {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </Button>
-      <Button variant="secondary" size="sm" onClick={save} leftIcon={<Save size={16} />}>
-        <span className="hidden sm:inline">Guardar</span>
+      <Button variant="secondary" size="sm" onClick={save} leftIcon={saved ? <Check size={16} /> : <Save size={16} />}>
+        <span className="hidden sm:inline">{saved ? 'Guardado' : 'Guardar'}</span>
       </Button>
       <Button variant="secondary" size="sm" onClick={() => setSection('export')} leftIcon={<Download size={16} />}>
         <span className="hidden sm:inline">Exportar</span>

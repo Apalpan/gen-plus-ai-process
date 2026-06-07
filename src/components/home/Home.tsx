@@ -53,7 +53,7 @@ export function Home() {
   };
 
   return (
-    <div className="relative min-h-screen w-screen overflow-y-auto bg-ink-900 text-white">
+    <div className="dark relative min-h-screen w-screen overflow-y-auto bg-ink-900 text-white">
       {/* background */}
       <div className="pointer-events-none absolute inset-0 bg-gen-hero opacity-90" />
       <div className="pointer-events-none absolute inset-0 bg-grid-dots [background-size:26px_26px] opacity-[0.5]" />
@@ -83,7 +83,7 @@ export function Home() {
             className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3.5 py-1.5 text-[12.5px] font-medium text-brand-200"
           >
             <Sparkles size={14} className="text-brand-400" />
-            Figma + Miro + BPMN + Copilot + Métricas, en uno
+            Herramienta de mapeo de procesos para flujos de coordinación
           </motion.div>
 
           <motion.h1
@@ -92,10 +92,10 @@ export function Home() {
             transition={{ duration: 0.55, delay: 0.05 }}
             className="font-display text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl"
           >
-            Mapea procesos complejos
+            Mapea cómo coordina tu equipo,
             <br />
             <span className="bg-gradient-to-r from-brand-300 via-brand-200 to-white bg-clip-text text-transparent">
-              desde ideas simples.
+              desde una idea simple.
             </span>
           </motion.h1>
 
@@ -105,8 +105,8 @@ export function Home() {
             transition={{ duration: 0.55, delay: 0.12 }}
             className="mt-5 max-w-2xl text-[15px] leading-relaxed text-[var(--gen-text-secondary)] sm:text-base"
           >
-            Convierte conversaciones, problemas y coordinaciones en procesos visuales, métricas accionables y
-            automatizaciones listas para implementar.
+            Convierte reuniones, acuerdos y coordinaciones en flujos de trabajo claros — con responsables, métricas y
+            automatizaciones — que todo el equipo puede guardar, editar y exportar.
           </motion.p>
 
           <motion.div

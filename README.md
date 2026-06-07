@@ -2,11 +2,13 @@
 
 > Mapea procesos complejos desde ideas simples.
 
-**GEN+ AI Process** es un sistema visual y conversacional que transforma ideas vagas, notas operativas, problemas de proyecto, coordinaciones y descripciones en lenguaje natural en **mapas de procesos claros, interactivos, medibles y listos para implementación técnica**.
+**GEN+ AI Process** es una herramienta visual y conversacional para **mapear procesos de coordinación**: un equipo describe un flujo de trabajo en lenguaje natural y obtiene un **mapa de proceso claro, editable, medible, guardable y exportable**.
 
-Pensado para ingeniería, construcción (BIM / VDC / VIA / ICE / PPM), educación, startups y gestión empresarial. Diseño premium **GEN+**: azul tecnológico, navy oscuro, jerarquía clara y estética de software enterprise.
+- 🎨 **Versión principal en tema claro** (con toggle a oscuro), identidad premium **GEN+**.
+- 🤖 **IA multi-proveedor configurable**: conecta tu API key (Claude / OpenAI / Gemini / endpoint compatible) y MCPs/integraciones desde la app. Sin key, usa un motor heurístico local.
+- 👥 **Para todo el equipo**: guarda tus mapeos en una biblioteca local y compártelos vía export/import JSON.
 
-Es un híbrido de **Figma + Miro + BPMN + Copilot + Dashboard de métricas**, especializado en procesos.
+Pensado para coordinación entre áreas, PMO, ingeniería/construcción (BIM / VDC / VIA / ICE / PPM), educación, startups y gestión empresarial. Híbrido de **Figma + Miro + BPMN + Copilot + Métricas**, especializado en procesos.
 
 ---
 
@@ -34,15 +36,19 @@ Escribe una idea desordenada, por ejemplo:
 - **Riesgos** — matriz probabilidad × impacto con mitigación.
 - **Automatizaciones** — trigger → acción, input/output y human-in-the-loop.
 - **Health Check** — score 0–100 con bandas (débil / incompleto / implementable / blindado).
-- **6 plantillas** precargadas + ejemplo inicial cargado.
+- **Configuración de IA** — proveedor + API key + modelo (Claude por defecto), prueba de conexión, y registro de **MCPs / integraciones** que se inyectan en los prompts de implementación.
+- **Mis procesos (biblioteca)** — guardar, abrir, renombrar, duplicar, eliminar e importar (localStorage; comparte por JSON).
+- **Tema claro/oscuro** persistente; tema claro por defecto.
+- **7 plantillas** precargadas (incl. *Coordinación de equipo / proyecto*) + ejemplo inicial cargado.
 
 ### Plantillas incluidas
-1. Gestión de consultas técnicas en obra (RFI / CDE) — *ejemplo por defecto*
-2. Matriz VDC / VIA / ICE / PPM
-3. Proceso comercial B2B
-4. Coordinación académica (AECODE)
-5. Gestión de sponsors / eventos
-6. Automatización administrativa
+1. Coordinación de equipo / proyecto — *flujo de coordinación*
+2. Gestión de consultas técnicas en obra (RFI / CDE) — *ejemplo por defecto*
+3. Matriz VDC / VIA / ICE / PPM
+4. Proceso comercial B2B
+5. Coordinación académica (AECODE)
+6. Gestión de sponsors / eventos
+7. Automatización administrativa
 
 ## 🛠 Stack
 
@@ -74,21 +80,19 @@ Requiere Node 18+ (probado con Node 20/24).
 5. Revisa **Métricas**, **Riesgos**, **Automatizaciones** y el **Health Check** desde la barra lateral.
 6. **Exporta** en el formato que necesites.
 
-## 🤖 Conectar una IA real
+## 🤖 Conectar una IA real (sin código)
 
-La generación usa un **motor heurístico local** (`src/ai/ProcessGenerator.ts`) para funcionar sin backend. Para conectar un LLM:
+Ya no necesitas tocar el código: ve a **Configuración** (barra lateral) y:
 
-1. Abre `src/ai/ProcessGenerator.ts` y reemplaza el cuerpo de `generateProcessFromAI` por una llamada real.
-2. Usa el **prompt maestro** de `src/ai/masterPrompt.ts` como *system prompt* y `buildUserMessage()` como mensaje de usuario.
-3. Endpoints sugeridos:
-   - **OpenAI**: `POST https://api.openai.com/v1/chat/completions`
-   - **Claude (Anthropic)**: `POST https://api.anthropic.com/v1/messages` (modelo `claude-opus-4-8`)
-   - **Endpoint propio**: `POST /api/generate`
-4. Persistencia opcional: Supabase / Firebase / GitHub storage.
+1. Elige el **proveedor** (Claude por defecto, OpenAI, Gemini o un endpoint compatible con OpenAI).
+2. Pega tu **API key** y el **modelo** (`claude-opus-4-8`, etc.). Para "compatible", define la **Base URL**.
+3. Pulsa **Probar conexión**.
 
-El modelo debe devolver un JSON que cumpla el esquema `ProcessMap` (`src/types/process.ts`).
+Con key configurada, *Generar mapa lógico* usa el LLM real (envía el **prompt maestro** de `src/ai/masterPrompt.ts` y espera un JSON `ProcessMap`); sin key, usa el **motor heurístico local** (`src/ai/ProcessGenerator.ts`). La capa de proveedores está en `src/ai/llm.ts`.
 
-> ⚠️ No incrustes claves de API en el frontend en producción: usa un backend o función serverless como proxy.
+También puedes registrar **MCPs / integraciones** (Notion, Drive, n8n…) en Configuración; se incluyen en los prompts de implementación que exportas.
+
+> ⚠️ **Seguridad:** la API key se guarda solo en tu navegador (localStorage) y se envía directo al proveedor. Es adecuado para una herramienta cliente donde cada quien usa su propia clave. Para un despliegue compartido/producción, enruta las llamadas por un backend/función serverless en vez de exponer la clave en el navegador.
 
 ## 📦 Despliegue
 
@@ -115,10 +119,10 @@ src/
     ai/           PromptComposer, AIConversationPanel (Copilot)
     home/         Hero
     brand/        Logo
-  data/           templates.ts (6 plantillas + ejemplo)
-  ai/             ProcessGenerator, copilot, masterPrompt
-  lib/            processSchema, processEngine, health, exporters, prompts
-  store/          useProcessStore (Zustand)
+  data/           templates.ts (7 plantillas + ejemplo)
+  ai/             ProcessGenerator, copilot, masterPrompt, llm (multi-proveedor)
+  lib/            processSchema, processEngine, health, exporters, prompts, storage
+  store/          useProcessStore (Zustand: proceso, tema, LLM, integraciones, biblioteca)
   types/          process.ts (modelo de dominio)
   styles/         globals.css, tokens.css
 ```

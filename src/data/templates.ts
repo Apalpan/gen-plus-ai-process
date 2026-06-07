@@ -723,7 +723,83 @@ export function buildGeneric(title = 'Proceso genérico', description = '', inpu
   };
 }
 
+/* ============================================================
+   G. Coordinación de equipo / proyecto (flujo de coordinación)
+   ============================================================ */
+export function buildCoordinacion(): ProcessMap {
+  return quickProcess({
+    id: 'tpl_coordinacion',
+    title: 'Coordinación de equipo / proyecto',
+    description: 'Flujo de coordinación: desde una solicitud o acuerdo hasta su ejecución, seguimiento y cierre con responsables y SLA.',
+    objective: 'Reducir bloqueos y demoras en la coordinación entre áreas con responsables, decisiones y seguimiento claros.',
+    context: 'Las coordinaciones se gestionan por chat y reuniones sin un flujo claro: se pierden acuerdos, no hay responsables únicos y el seguimiento es manual.',
+    owner: 'PMO / Coordinación',
+    northStar: '% de acuerdos cerrados en plazo',
+    tags: ['coordinación', 'flujo de trabajo', 'equipo', 'seguimiento'],
+    maturity: 'optimized',
+    lanes: [
+      { key: 'sol', name: 'Solicitante', type: 'operations', color: '#1E5CE8', role: 'Solicitante' },
+      { key: 'coord', name: 'Coordinación / PMO', type: 'control', color: '#22D3EE', role: 'Coordinador' },
+      { key: 'resp', name: 'Área responsable', type: 'production', color: '#34D399', role: 'Responsable' },
+      { key: 'aprob', name: 'Aprobación', type: 'control', color: '#F5A623', role: 'Aprobador' },
+      { key: 'seg', name: 'Seguimiento', type: 'documentation', color: '#8B5CF6', role: 'PMO' },
+    ],
+    nodes: [
+      { key: 's', type: 'start', title: 'Solicitud / acuerdo', lane: 'sol' },
+      { key: 'intake', title: 'Registrar solicitud', lane: 'sol', code: 'COORD-01', responsible: 'Solicitante', outputs: ['Solicitud registrada'] },
+      { key: 'triage', title: 'Triage y priorización', lane: 'coord', code: 'COORD-02', responsible: 'Coordinador', outputs: ['Prioridad asignada'], sla: '≤ 8 h' },
+      { key: 'dvalid', type: 'decision', title: '¿Información completa?', lane: 'coord', condition: 'Tiene contexto, objetivo y responsable propuesto', responsible: 'Coordinador' },
+      { key: 'back', type: 'handoff', title: 'Solicitar completar', lane: 'sol', responsible: 'Coordinador', outputs: ['Solicitud de info'] },
+      { key: 'assign', title: 'Asignar responsable', lane: 'coord', code: 'COORD-03', responsible: 'Coordinador', outputs: ['Responsable asignado'] },
+      { key: 'exec', title: 'Ejecutar tarea', lane: 'resp', code: 'COORD-04', responsible: 'Responsable', outputs: ['Entregable'], sla: '≤ 3 días' },
+      { key: 'dimpact', type: 'decision', title: '¿Requiere aprobación?', lane: 'resp', condition: 'Impacta presupuesto, alcance o plazo', responsible: 'Responsable' },
+      { key: 'approve', type: 'approval', title: 'Aprobar', lane: 'aprob', code: 'COORD-05', responsible: 'Aprobador', outputs: ['Aprobado'], sla: '≤ 1 día' },
+      { key: 'track', title: 'Registrar avance', lane: 'seg', code: 'COORD-06', responsible: 'PMO', outputs: ['Estado actualizado'] },
+      { key: 'evidence', type: 'evidence', title: 'Evidencia y acuerdos', lane: 'seg', outputs: ['Acta / evidencia'] },
+      { key: 'e', type: 'end', title: 'Cierre y comunicación', lane: 'seg' },
+    ],
+    flow: [
+      ['s', 'intake'], ['intake', 'triage'], ['triage', 'dvalid'],
+      ['dvalid', 'assign', { type: 'decision_yes' }], ['dvalid', 'back', { type: 'decision_no' }],
+      ['back', 'intake', { type: 'feedback' }],
+      ['assign', 'exec'], ['exec', 'dimpact'],
+      ['dimpact', 'approve', { type: 'decision_yes' }], ['dimpact', 'track', { type: 'decision_no' }],
+      ['approve', 'track'], ['track', 'evidence', { type: 'evidence' }], ['track', 'e'],
+    ],
+    metrics: [
+      makeMetric({ code: 'CO-M1', name: '% acuerdos cerrados en plazo', category: 'time', formula: 'cerrados en SLA / total', target: '≥ 90%', currentValue: '82%', frequency: 'Semanal', owner: 'PMO', leadingOrLagging: 'lagging' }),
+      makeMetric({ code: 'CO-M2', name: 'Tiempo de coordinación', category: 'time', formula: 'horas promedio solicitud → cierre', target: '≤ 48 h', currentValue: '60 h', frequency: 'Semanal', owner: 'Coordinador' }),
+      makeMetric({ code: 'CO-M3', name: 'Bloqueos abiertos', category: 'quality', formula: 'tareas bloqueadas / activas', target: '≤ 10%', currentValue: '15%', frequency: 'Semanal', owner: 'PMO' }),
+      makeMetric({ code: 'CO-M4', name: '% con responsable único', category: 'quality', formula: 'con responsable / total', target: '100%', currentValue: '94%', frequency: 'Semanal', owner: 'Coordinador' }),
+    ],
+    risks: [
+      makeRisk({ name: 'Acuerdos sin responsable', probability: 3, impact: 4, mitigation: 'Validación obligatoria de responsable antes de asignar.', trigger: 'Solicitud sin responsable', owner: 'Coordinador' }),
+      makeRisk({ name: 'Seguimiento manual disperso', probability: 3, impact: 3, mitigation: 'Tablero único de estado y recordatorios automáticos.', owner: 'PMO' }),
+      makeRisk({ name: 'Aprobaciones cuello de botella', probability: 2, impact: 4, mitigation: 'Alerta de SLA y aprobador suplente.', owner: 'Aprobador' }),
+    ],
+    automations: [
+      makeAutomation({ name: 'Crear tarea desde solicitud', trigger: 'Nueva solicitud en formulario', action: 'Crear tarea con responsable y SLA en el tablero', inputData: 'Formulario de solicitud', outputData: 'Tarea creada', tools: ['n8n', 'Notion'], humanInTheLoop: false, estimatedImpact: '−50% tiempo de registro' }),
+      makeAutomation({ name: 'Recordatorio de SLA', trigger: 'Tarea próxima a vencer', action: 'Notificar al responsable y al PMO', inputData: 'Estado de la tarea', outputData: 'Recordatorio', tools: ['Slack', 'Email'], humanInTheLoop: false }),
+      makeAutomation({ name: 'Acta automática al cierre', trigger: 'Tarea cerrada', action: 'Generar acta/evidencia y archivar', inputData: 'Hilo de la tarea', outputData: 'Acta PDF', humanInTheLoop: false }),
+    ],
+    documents: [
+      makeDocument({ name: 'Formulario de solicitud', type: 'Formulario', format: 'Form', repository: 'Notion / Sheets', required: true }),
+      makeDocument({ name: 'Tablero de estado', type: 'Tablero', format: 'Notion / Sheets', repository: 'Workspace', required: true }),
+      makeDocument({ name: 'Acta / evidencia', type: 'Evidencia', format: 'PDF', repository: 'Drive', required: true }),
+    ],
+    assumptions: ['Existe un tablero único (Notion/Sheets) como fuente de verdad.'],
+    openQuestions: ['¿Quién aprueba cambios de alcance/presupuesto?', '¿Qué SLA aplica por tipo de solicitud?'],
+    checklist: [
+      ['Definir formulario de solicitud', 'Setup'],
+      ['Definir matriz RACI por área', 'Roles'],
+      ['Configurar recordatorios de SLA', 'Automatización'],
+      ['Conectar tablero y dashboard', 'Métricas'],
+    ],
+  });
+}
+
 export const templates: ProcessTemplate[] = [
+  { id: 'tpl_coordinacion', name: 'Coordinación de equipo / proyecto', description: 'Flujo de coordinación de extremo a extremo con responsables y SLA.', kind: 'custom', icon: 'Users', build: buildCoordinacion },
   { id: 'tpl_obra_example', name: 'Consultas técnicas en obra', description: 'RFI/CDE de extremo a extremo con trazabilidad y métricas.', kind: 'obra', icon: 'HardHat', build: buildObra },
   { id: 'tpl_vdc', name: 'Matriz VDC / VIA / ICE / PPM', description: 'Cadena causal de objetivos y factores controlables.', kind: 'bim_via', icon: 'Network', build: buildVDC },
   { id: 'tpl_comercial', name: 'Proceso comercial B2B', description: 'Pipeline de lead a renovación con métricas.', kind: 'comercial', icon: 'TrendingUp', build: buildComercial },

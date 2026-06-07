@@ -9,6 +9,7 @@ import { toMermaid } from '../../lib/mermaidExporter';
 import { codexPrompt, dashboardPrompt, n8nPrompt, obsidianPrompt } from '../../lib/prompts';
 import { downloadText, copyToClipboard, slugify } from '../../lib/download';
 import type { ProcessMap } from '../../types/process';
+import type { Integration } from '../../ai/llm';
 
 interface Item {
   id: string;
@@ -17,7 +18,7 @@ interface Item {
   icon: LucideIcon;
   ext: string;
   mime: string;
-  make: (p: ProcessMap) => string;
+  make: (p: ProcessMap, integrations: Integration[]) => string;
 }
 
 const ITEMS: Item[] = [
@@ -33,6 +34,7 @@ const ITEMS: Item[] = [
 
 function Row({ item }: { item: Item }) {
   const process = useProcessStore((s) => s.process);
+  const integrations = useProcessStore((s) => s.integrations);
   const [copied, setCopied] = useState(false);
   const Icon = item.icon;
 
@@ -47,7 +49,7 @@ function Row({ item }: { item: Item }) {
       </div>
       <button
         onClick={async () => {
-          if (await copyToClipboard(item.make(process))) {
+          if (await copyToClipboard(item.make(process, integrations))) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1400);
           }
@@ -58,7 +60,7 @@ function Row({ item }: { item: Item }) {
         {copied ? <Check size={15} className="text-accent-green" /> : <Copy size={15} />}
       </button>
       <button
-        onClick={() => downloadText(`${slugify(process.title)}.${item.ext}`, item.make(process), item.mime)}
+        onClick={() => downloadText(`${slugify(process.title)}.${item.ext}`, item.make(process, integrations), item.mime)}
         className="flex h-8 w-8 items-center justify-center rounded-btn text-brand-200 hover:bg-white/[0.08]"
         title="Descargar"
       >

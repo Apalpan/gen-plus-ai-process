@@ -1,4 +1,4 @@
-import { HardHat, Network, TrendingUp, GraduationCap, CalendarHeart, FileCog, FilePlus2, Sparkles } from 'lucide-react';
+import { HardHat, Network, TrendingUp, GraduationCap, CalendarHeart, FileCog, FilePlus2, Sparkles, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { templates } from '../../data/templates';
 import { useProcessStore } from '../../store/useProcessStore';
@@ -6,6 +6,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 
 const ICONS: Record<string, LucideIcon> = {
+  Users,
   HardHat,
   Network,
   TrendingUp,

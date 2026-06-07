@@ -2,6 +2,7 @@ import { useProcessStore } from '../../store/useProcessStore';
 import { PromptComposer } from '../ai/PromptComposer';
 import { AIConversationPanel } from '../ai/AIConversationPanel';
 import { TemplatesPanel } from '../process/TemplatesPanel';
+import { LibraryPanel } from '../process/LibraryPanel';
 import { MetricsPanel } from '../process/MetricsPanel';
 import { RisksPanel } from '../process/RisksPanel';
 import { AutomationPanel } from '../process/AutomationPanel';
@@ -26,6 +27,7 @@ export function LeftPanel() {
         </div>
       )}
       {section === 'templates' && <TemplatesPanel />}
+      {section === 'library' && <LibraryPanel />}
       {section === 'metrics' && <MetricsPanel />}
       {section === 'risks' && <RisksPanel />}
       {section === 'automations' && <AutomationPanel />}

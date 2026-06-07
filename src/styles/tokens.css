@@ -1,33 +1,72 @@
-/* GEN+ Design Tokens — single source of truth for raw values.
-   Consumed by Tailwind theme (tailwind.config.js) and by raw CSS below. */
+/* GEN+ Design Tokens — theme-aware.
+   Default (:root) = LIGHT (versión principal). `.dark` overrides = DARK.
+   RGB-triplet vars (--ink-*, --fg, --brand-*) feed Tailwind colors with
+   alpha support: rgb(var(--token) / <alpha-value>). Plain color vars feed
+   component classes and inline styles. */
 :root {
-  /* Surfaces */
+  /* App surfaces (RGB triplets for Tailwind ink-* scale) */
+  --ink-900: 237 242 252; /* app background */
+  --ink-850: 255 255 255; /* secondary surface */
+  --ink-800: 248 250 255; /* overlay */
+  --ink-700: 255 255 255; /* raised / cards */
+
+  /* Foreground (overrides Tailwind `white`) and brand light shades */
+  --fg: 9 21 46;
+  --brand-100: 30 92 232;
+  --brand-200: 23 72 181;
+  --brand-300: 23 72 181;
+
+  /* Plain color vars */
+  --gen-bg: #eef3ff;
+  --surface-grad: #ffffff;
+  --panel-grad: #ffffff;
+  --node-base: #ffffff;
+
+  --gen-text: #091530;
+  --gen-text-secondary: rgba(9, 21, 48, 0.74);
+  --gen-text-muted: rgba(9, 21, 48, 0.52);
+
+  --gen-border: rgba(16, 49, 124, 0.16);
+  --gen-border-strong: rgba(16, 49, 124, 0.3);
+
+  /* Accents (theme-invariant) */
+  --gen-amber: #d97706;
+  --gen-violet: #7c3aed;
+  --gen-cyan: #0891b2;
+  --gen-green: #059669;
+  --gen-red: #dc2626;
+  --gen-orange: #ea580c;
+
+  /* Motion */
+  --gen-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --gen-ease-panel: cubic-bezier(0.4, 0, 0.2, 1);
+
+  color-scheme: light;
+}
+
+.dark {
+  --ink-900: 4 15 32;
+  --ink-850: 6 20 42;
+  --ink-800: 7 26 54;
+  --ink-700: 10 36 76;
+
+  --fg: 255 255 255;
+  --brand-100: 233 240 255;
+  --brand-200: 186 207 255;
+  --brand-300: 106 152 255;
+
   --gen-bg: #040f20;
-  --gen-surface: #06142a;
-  --gen-overlay: #071a36;
-  --gen-raised: #0a244c;
+  --surface-grad: linear-gradient(180deg, rgba(10, 36, 76, 0.55) 0%, rgba(6, 20, 42, 0.65) 100%);
+  --panel-grad: linear-gradient(180deg, rgba(7, 26, 54, 0.92) 0%, rgba(4, 15, 32, 0.96) 100%);
+  --node-base: #0a244c;
 
-  /* Navy / blue scale */
-  --gen-navy-deep: #0e2a6b;
-  --gen-blue-dark: #12388c;
-  --gen-blue-medium: #1748b5;
-  --gen-blue-bright: #1e5ce8;
-  --gen-blue-primary: #2165ff;
-  --gen-blue-light: #4d84ff;
-  --gen-blue-sky: #6a98ff;
-  --gen-blue-pale: #bacfff;
-  --gen-blue-ice: #e9f0ff;
-
-  /* Text */
   --gen-text: #ffffff;
   --gen-text-secondary: rgba(255, 255, 255, 0.78);
   --gen-text-muted: rgba(255, 255, 255, 0.58);
 
-  /* Hairlines */
   --gen-border: rgba(106, 152, 255, 0.16);
   --gen-border-strong: rgba(106, 152, 255, 0.34);
 
-  /* Accents */
   --gen-amber: #f5a623;
   --gen-violet: #8b5cf6;
   --gen-cyan: #22d3ee;
@@ -35,7 +74,5 @@
   --gen-red: #f87171;
   --gen-orange: #fb923c;
 
-  /* Motion */
-  --gen-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --gen-ease-panel: cubic-bezier(0.4, 0, 0.2, 1);
+  color-scheme: dark;
 }

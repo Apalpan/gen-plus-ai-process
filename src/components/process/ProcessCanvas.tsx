@@ -35,6 +35,7 @@ export function ProcessCanvas() {
   const addEdge = useProcessStore((s) => s.addEdge);
   const relayout = useProcessStore((s) => s.relayout);
   const addNode = useProcessStore((s) => s.addNode);
+  const theme = useProcessStore((s) => s.theme);
 
   const rfNodes = useMemo(() => {
     return toFlowNodes(process).map((n) =>
@@ -91,9 +92,19 @@ export function ProcessCanvas() {
         defaultEdgeOptions={{ type: 'smoothstep' }}
         className="bg-ink-900"
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="rgba(106,152,255,0.14)" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={22}
+          size={1}
+          color={theme === 'dark' ? 'rgba(106,152,255,0.14)' : 'rgba(33,101,255,0.16)'}
+        />
         <Controls showInteractive={false} />
-        <MiniMap pannable zoomable nodeColor={miniMapColor} maskColor="rgba(4,15,32,0.78)" />
+        <MiniMap
+          pannable
+          zoomable
+          nodeColor={miniMapColor}
+          maskColor={theme === 'dark' ? 'rgba(4,15,32,0.78)' : 'rgba(237,242,252,0.82)'}
+        />
 
         <Panel position="top-left" className="!m-3">
           <div className="flex items-center gap-1 rounded-btn-lg border border-[var(--gen-border)] bg-ink-850/90 p-1 shadow-elevated backdrop-blur">

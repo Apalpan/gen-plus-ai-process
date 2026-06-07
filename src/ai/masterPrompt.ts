@@ -40,6 +40,22 @@ Devuelve EXCLUSIVAMENTE un objeto JSON válido que cumpla el esquema ProcessMap 
 /**
  * Builds the user message for the LLM given the prompt parameters.
  */
+const SCHEMA_HINT = `Estructura JSON requerida (usa IDs string consistentes):
+{
+  "title": string, "description": string, "context": string, "objective": string,
+  "owner": string, "northStarMetric": string, "tags": string[],
+  "lanes": [{ "id": string, "name": string, "type": "client|project|production|control|support|documentation|ai|commercial|finance|operations|custom", "color": "#hex", "ownerRole": string }],
+  "nodes": [{ "id": string, "type": "start|end|activity|decision|document|system|metric|risk|automation|approval|handoff|evidence", "code": string, "title": string, "description": string, "laneId": <lane.id>, "responsible": string, "accountable": string, "inputs": string[], "outputs": string[], "tools": string[], "documents": string[], "sla": string, "condition": string, "priority": "low|medium|high|critical" }],
+  "edges": [{ "id": string, "source": <node.id>, "target": <node.id>, "type": "sequence|decision_yes|decision_no|dependency|evidence|feedback|automation|metric_impact", "label": string }],
+  "metrics": [{ "id": string, "code": string, "name": string, "category": "client_objective|project_objective|production_objective|controllable_factor|business|quality|time|cost|adoption|risk", "formula": string, "target": string, "currentValue": string, "frequency": string, "owner": string, "leadingOrLagging": "leading|lagging" }],
+  "risks": [{ "id": string, "name": string, "probability": 1-5, "impact": 1-5, "mitigation": string, "trigger": string, "owner": string }],
+  "automations": [{ "id": string, "name": string, "trigger": string, "action": string, "inputData": string, "outputData": string, "humanInTheLoop": boolean, "tools": string[] }],
+  "documents": [{ "id": string, "name": string, "format": string, "repository": string, "required": boolean }],
+  "assumptions": string[], "openQuestions": string[],
+  "implementationChecklist": [{ "text": string, "phase": string, "done": false }]
+}
+Reglas: cada laneId debe existir en lanes[]; cada edge.source/target debe existir en nodes[]; debe haber un nodo start y uno end; cada decisión debe tener ramas decision_yes y decision_no. Devuelve SOLO el JSON, sin texto adicional ni markdown.`;
+
 export function buildUserMessage(params: {
   input: string;
   kind: string;
@@ -47,7 +63,7 @@ export function buildUserMessage(params: {
   format: string;
   maturity: string;
 }): string {
-  return `Idea / contexto del usuario:
+  return `Idea / contexto del usuario (proceso de coordinación / flujo de trabajo):
 """
 ${params.input}
 """
@@ -58,5 +74,5 @@ Parámetros:
 - Formato de salida preferido: ${params.format}
 - Madurez objetivo: ${params.maturity}
 
-Genera el ProcessMap completo en JSON.`;
+${SCHEMA_HINT}`;
 }

@@ -33,7 +33,7 @@ export function ScoreRing({ score, color, size = 56 }: { score: number; color: s
         strokeLinecap="round"
         style={{ transition: 'stroke-dashoffset 600ms cubic-bezier(.4,0,.2,1)' }}
       />
-      <text x="50%" y="50%" dy="0.35em" textAnchor="middle" className="rotate-90" style={{ transformOrigin: 'center' }} fill="#fff" fontSize={size * 0.3} fontWeight={700}>
+      <text x="50%" y="50%" dy="0.35em" textAnchor="middle" className="rotate-90" style={{ transformOrigin: 'center' }} fill="var(--gen-text)" fontSize={size * 0.3} fontWeight={700}>
         {score}
       </text>
     </svg>

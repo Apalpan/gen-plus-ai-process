@@ -59,7 +59,7 @@ export function AIConversationPanel() {
               className={cn(
                 'max-w-[92%] rounded-card px-3 py-2 text-[12.5px] leading-relaxed',
                 m.role === 'user'
-                  ? 'bg-brand-500 text-white'
+                  ? 'bg-brand-500 text-oncolor'
                   : 'gen-surface text-[var(--gen-text-secondary)]',
               )}
             >
@@ -94,7 +94,7 @@ export function AIConversationPanel() {
         <button
           onClick={send}
           aria-label="Enviar"
-          className="flex h-11 w-11 items-center justify-center rounded-btn bg-brand-500 text-white transition-colors hover:bg-brand-400 focus-visible:shadow-focus"
+          className="flex h-11 w-11 items-center justify-center rounded-btn bg-brand-500 text-oncolor transition-colors hover:bg-brand-400 focus-visible:shadow-focus"
         >
           <Send size={17} />
         </button>

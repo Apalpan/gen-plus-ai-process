@@ -25,12 +25,6 @@
     font-feature-settings: 'ss01' 1, 'cv01' 1;
   }
 
-  /* Light theme overrides (optional, dark-first) */
-  html:not(.dark) body {
-    background-color: #eef3ff;
-    color: #0a1530;
-  }
-
   ::selection {
     background: rgba(33, 101, 255, 0.4);
     color: #fff;
@@ -62,16 +56,15 @@
 }
 
 @layer components {
-  /* Premium dark glass surface used across cards/panels */
+  /* Premium glass surface used across cards/panels (theme-aware) */
   .gen-surface {
-    background:
-      linear-gradient(180deg, rgba(10, 36, 76, 0.55) 0%, rgba(6, 20, 42, 0.65) 100%);
+    background: var(--surface-grad);
     border: 1px solid var(--gen-border);
     backdrop-filter: blur(8px);
   }
 
   .gen-panel {
-    background: linear-gradient(180deg, rgba(7, 26, 54, 0.92) 0%, rgba(4, 15, 32, 0.96) 100%);
+    background: var(--panel-grad);
     border: 1px solid var(--gen-border);
   }
 

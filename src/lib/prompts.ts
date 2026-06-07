@@ -1,8 +1,17 @@
 import type { ProcessMap } from '../types/process';
+import type { Integration } from '../ai/llm';
 import { toJSON } from './jsonExporter';
 
+function integrationsBlock(integrations?: Integration[]): string {
+  const on = (integrations ?? []).filter((i) => i.enabled);
+  if (!on.length) return '';
+  return `\n## Integraciones configuradas (MCP / conectores)\n${on
+    .map((i) => `- ${i.name} (${i.type})${i.url ? ` — ${i.url}` : ''}`)
+    .join('\n')}\nUsa estas integraciones donde corresponda.\n`;
+}
+
 /** Prompt to implement the process in software (Codex / Claude Code). */
-export function codexPrompt(p: ProcessMap): string {
+export function codexPrompt(p: ProcessMap, integrations?: Integration[]): string {
   return `# Implementación de software — ${p.title}
 
 Implementa este proceso como una aplicación real usando el siguiente JSON como contrato de dominio.
@@ -20,7 +29,7 @@ automatizaciones y reportes. Mantén trazabilidad completa y métricas en tiempo
 
 ## Stack sugerido
 React + TypeScript en frontend; API REST/tRPC; Postgres; colas para automatizaciones; auth por rol.
-
+${integrationsBlock(integrations)}
 ## Contrato de dominio (ProcessMap JSON)
 \`\`\`json
 ${toJSON(p)}
@@ -29,7 +38,7 @@ ${toJSON(p)}
 }
 
 /** Prompt to build the automations in n8n. */
-export function n8nPrompt(p: ProcessMap): string {
+export function n8nPrompt(p: ProcessMap, integrations?: Integration[]): string {
   const autos = p.automations
     .map(
       (a, i) =>
@@ -44,7 +53,7 @@ y un paso de aprobación humana cuando se indique human-in-the-loop.
 
 ## Automatizaciones a construir
 ${autos || '— (no hay automatizaciones definidas; sugiere al menos 3 basadas en el flujo)'}
-
+${integrationsBlock(integrations)}
 ## Reglas
 - Maneja errores y reintentos.
 - Registra cada ejecución para trazabilidad.

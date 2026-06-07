@@ -6,7 +6,7 @@ import { Field, Select, Textarea } from '../ui/Field';
 import type { DetailLevel, MaturityLevel, OutputFormat, ProcessKind } from '../../types/process';
 
 const EXAMPLE =
-  'Necesito mapear cómo gestionamos consultas técnicas en obra desde que campo detecta una duda hasta que se cierra la consulta con trazabilidad documental y métricas.';
+  'Quiero mapear cómo coordinamos las solicitudes entre áreas: desde que llega un pedido, se prioriza y se asigna un responsable, se ejecuta, se aprueba si impacta presupuesto o plazo, y se cierra con seguimiento y evidencia.';
 
 const KINDS: { value: ProcessKind | 'auto'; label: string }[] = [
   { value: 'auto', label: 'Detección automática' },
@@ -43,7 +43,7 @@ export function PromptComposer() {
         <h2 className="text-[14px] font-bold tracking-tight">Constructor IA</h2>
       </div>
       <p className="mb-3 text-[12px] leading-relaxed gen-text-muted">
-        Describe una idea, problema o coordinación en lenguaje natural. La IA construye el proceso, métricas y riesgos.
+        Describe un flujo de coordinación en lenguaje natural. La IA construye el proceso con responsables, métricas y riesgos.
       </p>
 
       <Field label="Instrucción">

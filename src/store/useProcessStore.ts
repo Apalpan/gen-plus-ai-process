@@ -18,11 +18,14 @@ import { emptyProcess, makeAutomation, makeMetric, makeNode, makeRisk, nowIso } 
 import { buildObra, getTemplateById } from '../data/templates';
 import { generateProcessFromAI } from '../ai/ProcessGenerator';
 import { runCopilot } from '../ai/copilot';
+import { storage } from '../lib/storage';
+import { emptyLLMConfig, type Integration, type LLMConfig } from '../ai/llm';
 
 export type View = 'home' | 'app';
 export type Section =
   | 'builder'
   | 'templates'
+  | 'library'
   | 'metrics'
   | 'risks'
   | 'automations'
@@ -30,6 +33,14 @@ export type Section =
   | 'export'
   | 'roadmap'
   | 'settings';
+
+export interface SavedProcess {
+  id: string;
+  title: string;
+  updatedAt: string;
+  maturityLevel: ProcessMap['maturityLevel'];
+  process: ProcessMap;
+}
 
 export interface ChatMessage {
   id: string;
@@ -46,6 +57,9 @@ interface ProcessState {
   selectedNodeId: string | null;
   isGenerating: boolean;
   chat: ChatMessage[];
+  llmConfig: LLMConfig;
+  integrations: Integration[];
+  library: SavedProcess[];
 
   // derived
   health: () => HealthReport;
@@ -86,6 +100,19 @@ interface ProcessState {
   patchAutomation: (id: string, patch: Partial<Automation>) => void;
   deleteAutomation: (id: string) => void;
 
+  // LLM + integrations
+  setLLMConfig: (patch: Partial<LLMConfig>) => void;
+  addIntegration: (it: Omit<Integration, 'id'>) => void;
+  patchIntegration: (id: string, patch: Partial<Integration>) => void;
+  deleteIntegration: (id: string) => void;
+
+  // library (local, shareable via JSON)
+  saveToLibrary: () => void;
+  openFromLibrary: (id: string) => void;
+  renameLibraryItem: (id: string, title: string) => void;
+  duplicateLibraryItem: (id: string) => void;
+  deleteLibraryItem: (id: string) => void;
+
   // copilot
   sendCopilot: (command: string) => void;
 }
@@ -95,19 +122,27 @@ const initialProcess = ((): ProcessMap => {
   return { ...p, nodes: autoLayout(p) };
 })();
 
+const initialTheme = storage.read<'light' | 'dark'>('theme', 'light');
+if (typeof document !== 'undefined') {
+  document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+}
+
 export const useProcessStore = create<ProcessState>((set, get) => ({
   view: 'home',
   section: 'builder',
-  theme: 'dark',
+  theme: initialTheme,
   process: initialProcess,
   selectedNodeId: null,
   isGenerating: false,
+  llmConfig: storage.read<LLMConfig>('llm', emptyLLMConfig()),
+  integrations: storage.read<Integration[]>('integrations', []),
+  library: storage.read<SavedProcess[]>('library', []),
   chat: [
     {
       id: 'welcome',
       role: 'assistant',
       text:
-        '¡Hola! Soy tu Process Copilot. Puedo simplificar, hacer más técnico, agregar métricas, detectar cuellos de botella, asignar responsables o exportar el proceso. Escribe una instrucción.',
+        '¡Hola! Soy tu Process Copilot para flujos de coordinación. Puedo simplificar, hacer más técnico, agregar métricas, detectar cuellos de botella, asignar responsables o exportar el proceso. Escribe una instrucción.',
     },
   ],
 
@@ -121,6 +156,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
       if (typeof document !== 'undefined') {
         document.documentElement.classList.toggle('dark', theme === 'dark');
       }
+      storage.write('theme', theme);
       return { theme };
     }),
   selectNode: (id) => set({ selectedNodeId: id }),
@@ -149,7 +185,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
       chat: [...st.chat, { id: 'u' + Date.now(), role: 'user', text: prompt.input || '(generar proceso)' }],
     }));
     try {
-      const p = await generateProcessFromAI(prompt);
+      const p = await generateProcessFromAI(prompt, get().llmConfig);
       set({
         process: { ...p, nodes: autoLayout(p) },
         selectedNodeId: null,
@@ -168,10 +204,11 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
           },
         ],
       }));
-    } catch {
+    } catch (e) {
       set({ isGenerating: false });
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
       set((st) => ({
-        chat: [...st.chat, { id: 'e' + Date.now(), role: 'assistant', text: 'No pude generar el proceso. Revisa la instrucción e inténtalo de nuevo.' }],
+        chat: [...st.chat, { id: 'e' + Date.now(), role: 'assistant', text: `No pude generar el proceso: ${msg}. Si usas un LLM, revisa la API key en Configuración; sin key uso el motor local.` }],
       }));
     }
   },
@@ -320,6 +357,78 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
     })),
   deleteAutomation: (id) =>
     set((st) => ({ process: { ...st.process, automations: st.process.automations.filter((a) => a.id !== id), updatedAt: nowIso() } })),
+
+  /* ---- LLM + integrations ---- */
+  setLLMConfig: (patch) =>
+    set((st) => {
+      const llmConfig = { ...st.llmConfig, ...patch };
+      storage.write('llm', llmConfig);
+      return { llmConfig };
+    }),
+  addIntegration: (it) =>
+    set((st) => {
+      const integrations = [...st.integrations, { ...it, id: 'int_' + Date.now().toString(36) }];
+      storage.write('integrations', integrations);
+      return { integrations };
+    }),
+  patchIntegration: (id, patch) =>
+    set((st) => {
+      const integrations = st.integrations.map((i) => (i.id === id ? { ...i, ...patch } : i));
+      storage.write('integrations', integrations);
+      return { integrations };
+    }),
+  deleteIntegration: (id) =>
+    set((st) => {
+      const integrations = st.integrations.filter((i) => i.id !== id);
+      storage.write('integrations', integrations);
+      return { integrations };
+    }),
+
+  /* ---- Library ---- */
+  saveToLibrary: () =>
+    set((st) => {
+      const p = { ...st.process, updatedAt: nowIso() };
+      const entry: SavedProcess = { id: p.id, title: p.title, updatedAt: p.updatedAt, maturityLevel: p.maturityLevel, process: p };
+      const exists = st.library.some((s) => s.id === p.id);
+      const library = exists ? st.library.map((s) => (s.id === p.id ? entry : s)) : [entry, ...st.library];
+      storage.write('library', library);
+      return { library, process: p };
+    }),
+  openFromLibrary: (id) =>
+    set((st) => {
+      const item = st.library.find((s) => s.id === id);
+      if (!item) return st;
+      return { process: { ...item.process, nodes: autoLayout(item.process) }, selectedNodeId: null, view: 'app', section: 'builder' };
+    }),
+  renameLibraryItem: (id, title) =>
+    set((st) => {
+      const library = st.library.map((s) => (s.id === id ? { ...s, title, process: { ...s.process, title } } : s));
+      storage.write('library', library);
+      const process = st.process.id === id ? { ...st.process, title } : st.process;
+      return { library, process };
+    }),
+  duplicateLibraryItem: (id) =>
+    set((st) => {
+      const item = st.library.find((s) => s.id === id);
+      if (!item) return st;
+      const newId = 'proc_' + Date.now().toString(36);
+      const copy: SavedProcess = {
+        id: newId,
+        title: `${item.title} (copia)`,
+        updatedAt: nowIso(),
+        maturityLevel: item.maturityLevel,
+        process: { ...item.process, id: newId, title: `${item.title} (copia)`, updatedAt: nowIso() },
+      };
+      const library = [copy, ...st.library];
+      storage.write('library', library);
+      return { library };
+    }),
+  deleteLibraryItem: (id) =>
+    set((st) => {
+      const library = st.library.filter((s) => s.id !== id);
+      storage.write('library', library);
+      return { library };
+    }),
 
   sendCopilot: (command) => {
     const trimmed = command.trim();

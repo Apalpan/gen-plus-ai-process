@@ -15,7 +15,7 @@ function Stepper({ value, onChange, label }: { value: number; onChange: (v: numb
             key={n}
             onClick={() => onChange(n)}
             className={`h-6 w-6 rounded-md text-[11px] font-semibold transition-colors ${
-              n <= value ? 'bg-brand-500 text-white' : 'bg-white/[0.06] text-[var(--gen-text-muted)] hover:bg-white/[0.12]'
+              n <= value ? 'bg-brand-500 text-oncolor' : 'bg-white/[0.06] text-[var(--gen-text-muted)] hover:bg-white/[0.12]'
             }`}
           >
             {n}
@@ -48,7 +48,7 @@ function RiskCard({ risk }: { risk: Risk }) {
         <Stepper label="Impacto" value={risk.impact} onChange={(v) => patchRisk(risk.id, { impact: v })} />
         <div>
           <span className="mb-1 block text-[10.5px] gen-text-muted">Severidad</span>
-          <span className="inline-flex h-6 items-center rounded-md px-2 text-[12px] font-bold text-white" style={{ background: riskSeverityColor(severity) }}>
+          <span className="inline-flex h-6 items-center rounded-md px-2 text-[12px] font-bold text-oncolor" style={{ background: riskSeverityColor(severity) }}>
             {severity}
           </span>
         </div>
