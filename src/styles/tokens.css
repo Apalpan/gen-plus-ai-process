@@ -1,0 +1,41 @@
+/* GEN+ Design Tokens — single source of truth for raw values.
+   Consumed by Tailwind theme (tailwind.config.js) and by raw CSS below. */
+:root {
+  /* Surfaces */
+  --gen-bg: #040f20;
+  --gen-surface: #06142a;
+  --gen-overlay: #071a36;
+  --gen-raised: #0a244c;
+
+  /* Navy / blue scale */
+  --gen-navy-deep: #0e2a6b;
+  --gen-blue-dark: #12388c;
+  --gen-blue-medium: #1748b5;
+  --gen-blue-bright: #1e5ce8;
+  --gen-blue-primary: #2165ff;
+  --gen-blue-light: #4d84ff;
+  --gen-blue-sky: #6a98ff;
+  --gen-blue-pale: #bacfff;
+  --gen-blue-ice: #e9f0ff;
+
+  /* Text */
+  --gen-text: #ffffff;
+  --gen-text-secondary: rgba(255, 255, 255, 0.78);
+  --gen-text-muted: rgba(255, 255, 255, 0.58);
+
+  /* Hairlines */
+  --gen-border: rgba(106, 152, 255, 0.16);
+  --gen-border-strong: rgba(106, 152, 255, 0.34);
+
+  /* Accents */
+  --gen-amber: #f5a623;
+  --gen-violet: #8b5cf6;
+  --gen-cyan: #22d3ee;
+  --gen-green: #34d399;
+  --gen-red: #f87171;
+  --gen-orange: #fb923c;
+
+  /* Motion */
+  --gen-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --gen-ease-panel: cubic-bezier(0.4, 0, 0.2, 1);
+}

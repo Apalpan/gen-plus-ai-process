@@ -1,0 +1,144 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-color: var(--gen-border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--gen-bg);
+    color: var(--gen-text);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'ss01' 1, 'cv01' 1;
+  }
+
+  /* Light theme overrides (optional, dark-first) */
+  html:not(.dark) body {
+    background-color: #eef3ff;
+    color: #0a1530;
+  }
+
+  ::selection {
+    background: rgba(33, 101, 255, 0.4);
+    color: #fff;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(106, 152, 255, 0.22);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(106, 152, 255, 0.4);
+    background-clip: padding-box;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--tw-shadow, 0 0 0 3px rgba(77, 132, 255, 0.45));
+  }
+}
+
+@layer components {
+  /* Premium dark glass surface used across cards/panels */
+  .gen-surface {
+    background:
+      linear-gradient(180deg, rgba(10, 36, 76, 0.55) 0%, rgba(6, 20, 42, 0.65) 100%);
+    border: 1px solid var(--gen-border);
+    backdrop-filter: blur(8px);
+  }
+
+  .gen-panel {
+    background: linear-gradient(180deg, rgba(7, 26, 54, 0.92) 0%, rgba(4, 15, 32, 0.96) 100%);
+    border: 1px solid var(--gen-border);
+  }
+
+  .gen-hairline {
+    border-color: var(--gen-border);
+  }
+
+  .gen-text-secondary {
+    color: var(--gen-text-secondary);
+  }
+  .gen-text-muted {
+    color: var(--gen-text-muted);
+  }
+
+  /* Animated connection lines used in hero */
+  .gen-glow-ring {
+    box-shadow: 0 0 0 1px rgba(77, 132, 255, 0.3), 0 12px 32px rgba(33, 101, 255, 0.18);
+  }
+}
+
+/* ----- React Flow theming to match GEN+ ----- */
+.react-flow {
+  background-color: var(--gen-bg);
+}
+.react-flow__background {
+  background-color: var(--gen-bg);
+}
+.react-flow__attribution {
+  display: none;
+}
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+.react-flow__controls {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--gen-border);
+}
+.react-flow__controls-button {
+  background: var(--gen-overlay);
+  border-bottom: 1px solid var(--gen-border);
+  color: var(--gen-blue-pale);
+  width: 32px;
+  height: 32px;
+}
+.react-flow__controls-button:hover {
+  background: var(--gen-raised);
+}
+.react-flow__controls-button svg {
+  fill: var(--gen-blue-pale);
+}
+.react-flow__minimap {
+  background: var(--gen-surface);
+  border: 1px solid var(--gen-border);
+  border-radius: 12px;
+}
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  background: var(--gen-blue-light);
+  border: 2px solid var(--gen-bg);
+}
+.react-flow__node {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  outline: none;
+}
