@@ -798,8 +798,80 @@ export function buildCoordinacion(): ProcessMap {
   });
 }
 
+/* ============================================================
+   H. Control de pagos y cobranza (finanzas)
+   ============================================================ */
+export function buildFinanzas(): ProcessMap {
+  return quickProcess({
+    id: 'tpl_finanzas',
+    title: 'Control de pagos y cobranza',
+    description: 'Recepción, validación, aprobación y ejecución de pagos/cobranzas con conciliación y reporte.',
+    objective: 'Reducir pagos vencidos y errores de registro con un flujo validado, aprobado y conciliado.',
+    context: 'Pagos y cobranzas se gestionan por correo y hojas sueltas: facturas se traspapelan, aprobaciones demoran y la conciliación es manual.',
+    owner: 'Administración / Finanzas',
+    northStar: '% de pagos y cobranzas ejecutados en fecha',
+    tags: ['finanzas', 'pagos', 'cobranza', 'conciliación'],
+    maturity: 'current',
+    lanes: [
+      { key: 'rec', name: 'Recepción', type: 'operations', color: '#1E5CE8', role: 'Asistente administrativo' },
+      { key: 'val', name: 'Validación', type: 'control', color: '#22D3EE', role: 'Analista financiero' },
+      { key: 'apr', name: 'Aprobación', type: 'control', color: '#F5A623', role: 'Gerencia' },
+      { key: 'tes', name: 'Tesorería', type: 'finance', color: '#34D399', role: 'Tesorero' },
+      { key: 'rep', name: 'Conciliación / Reporte', type: 'documentation', color: '#8B5CF6', role: 'Contabilidad' },
+    ],
+    nodes: [
+      { key: 's', type: 'start', title: 'Documento recibido', lane: 'rec' },
+      { key: 'recv', title: 'Recibir y registrar documento', lane: 'rec', code: 'FIN-01', responsible: 'Asistente administrativo', outputs: ['Documento registrado'], sla: '≤ 4 h' },
+      { key: 'val', title: 'Validar datos y soporte', lane: 'val', code: 'FIN-02', responsible: 'Analista financiero', outputs: ['Documento validado'], sla: '≤ 1 día' },
+      { key: 'dval', type: 'decision', title: '¿Documento válido y presupuestado?', lane: 'val', condition: 'Datos correctos, soporte completo y presupuesto disponible', responsible: 'Analista financiero' },
+      { key: 'fix', type: 'handoff', title: 'Devolver para corrección', lane: 'rec', responsible: 'Analista financiero', outputs: ['Solicitud de corrección'] },
+      { key: 'approve', type: 'approval', title: 'Aprobar pago / cobranza', lane: 'apr', code: 'FIN-03', responsible: 'Gerencia', outputs: ['Aprobación'], sla: '≤ 2 días' },
+      { key: 'exec', title: 'Ejecutar pago / gestionar cobranza', lane: 'tes', code: 'FIN-04', responsible: 'Tesorero', outputs: ['Transacción ejecutada'], sla: '≤ 1 día' },
+      { key: 'conc', title: 'Conciliar con banco', lane: 'rep', code: 'FIN-05', responsible: 'Contabilidad', outputs: ['Conciliación'], sla: 'Semanal' },
+      { key: 'report', title: 'Generar reporte financiero', lane: 'rep', code: 'FIN-06', responsible: 'Contabilidad', outputs: ['Reporte mensual'] },
+      { key: 'e', type: 'end', title: 'Cierre y archivo', lane: 'rep' },
+    ],
+    flow: [
+      ['s', 'recv'], ['recv', 'val'], ['val', 'dval'],
+      ['dval', 'approve', { type: 'decision_yes' }], ['dval', 'fix', { type: 'decision_no' }],
+      ['fix', 'recv', { type: 'feedback' }],
+      ['approve', 'exec'], ['exec', 'conc'], ['conc', 'report'], ['report', 'e'],
+    ],
+    metrics: [
+      makeMetric({ code: 'FIN-M1', name: '% pagos ejecutados en fecha', category: 'time', formula: 'pagos en fecha / total pagos', target: '≥ 95%', currentValue: '86%', frequency: 'Mensual', owner: 'Tesorero', leadingOrLagging: 'lagging' }),
+      makeMetric({ code: 'FIN-M2', name: 'Tiempo de cobranza (DSO)', category: 'cost', formula: 'días promedio factura → cobro', target: '≤ 30 días', currentValue: '42 días', frequency: 'Mensual', owner: 'Administración' }),
+      makeMetric({ code: 'FIN-M3', name: 'Errores de registro', category: 'quality', formula: 'documentos con error / total', target: '≤ 2%', currentValue: '5%', frequency: 'Mensual', owner: 'Analista financiero' }),
+      makeMetric({ code: 'FIN-M4', name: 'Reportes entregados en fecha', category: 'time', formula: 'reportes a tiempo / programados', target: '100%', currentValue: '90%', frequency: 'Mensual', owner: 'Contabilidad' }),
+    ],
+    risks: [
+      makeRisk({ name: 'Factura traspapelada o duplicada', probability: 3, impact: 4, mitigation: 'Registro único con numeración correlativa y detección de duplicados.', owner: 'Asistente administrativo' }),
+      makeRisk({ name: 'Aprobaciones fuera de plazo', probability: 3, impact: 4, mitigation: 'Alerta de SLA y aprobador suplente.', owner: 'Gerencia' }),
+      makeRisk({ name: 'Conciliación tardía oculta desviaciones', probability: 2, impact: 4, mitigation: 'Conciliación semanal automatizada con alertas.', owner: 'Contabilidad' }),
+    ],
+    automations: [
+      makeAutomation({ name: 'Registrar documento desde correo', trigger: 'Factura recibida en buzón', action: 'Extraer datos y crear registro', inputData: 'PDF de factura', outputData: 'Registro creado', tools: ['n8n', 'OCR'], humanInTheLoop: true }),
+      makeAutomation({ name: 'Alerta de pago próximo a vencer', trigger: '3 días antes del vencimiento', action: 'Notificar a tesorería y gerencia', inputData: 'Calendario de pagos', outputData: 'Alerta', humanInTheLoop: false }),
+      makeAutomation({ name: 'Reporte financiero automático', trigger: 'Cierre de mes', action: 'Compilar transacciones y generar reporte', inputData: 'Registros del mes', outputData: 'Reporte PDF', humanInTheLoop: true }),
+    ],
+    documents: [
+      makeDocument({ name: 'Factura / comprobante', type: 'Comprobante', format: 'PDF / XML', repository: 'Gestor documental', required: true }),
+      makeDocument({ name: 'Registro de pagos', type: 'Registro', format: 'Sheets / ERP', repository: 'Finanzas', required: true }),
+      makeDocument({ name: 'Reporte financiero mensual', type: 'Reporte', format: 'PDF', repository: 'Drive', required: true }),
+    ],
+    assumptions: ['Existe un calendario de pagos y un presupuesto aprobado.'],
+    openQuestions: ['¿Qué montos requieren doble aprobación?', '¿Qué sistema es la fuente de verdad (ERP/Sheets)?'],
+    checklist: [
+      ['Definir registro único de documentos', 'Setup'],
+      ['Definir matriz de aprobación por monto', 'Roles'],
+      ['Automatizar alertas de vencimiento', 'Automatización'],
+      ['Conectar reporte mensual al dashboard', 'Métricas'],
+    ],
+  });
+}
+
 export const templates: ProcessTemplate[] = [
-  { id: 'tpl_coordinacion', name: 'Coordinación de equipo / proyecto', description: 'Flujo de coordinación de extremo a extremo con responsables y SLA.', kind: 'custom', icon: 'Users', build: buildCoordinacion },
+  { id: 'tpl_coordinacion', name: 'Coordinación de equipo / proyecto', description: 'Flujo de coordinación de extremo a extremo con responsables y SLA.', kind: 'operaciones', icon: 'Users', build: buildCoordinacion },
+  { id: 'tpl_finanzas', name: 'Control de pagos y cobranza', description: 'Validación, aprobación, ejecución y conciliación financiera.', kind: 'finanzas', icon: 'Wallet', build: buildFinanzas },
   { id: 'tpl_obra_example', name: 'Consultas técnicas en obra', description: 'RFI/CDE de extremo a extremo con trazabilidad y métricas.', kind: 'obra', icon: 'HardHat', build: buildObra },
   { id: 'tpl_vdc', name: 'Matriz VDC / VIA / ICE / PPM', description: 'Cadena causal de objetivos y factores controlables.', kind: 'bim_via', icon: 'Network', build: buildVDC },
   { id: 'tpl_comercial', name: 'Proceso comercial B2B', description: 'Pipeline de lead a renovación con métricas.', kind: 'comercial', icon: 'TrendingUp', build: buildComercial },

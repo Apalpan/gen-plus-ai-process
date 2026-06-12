@@ -1,5 +1,6 @@
 import type { ProcessMap } from '../types/process';
 import { runHealthCheck } from './health';
+import { aiFirstBand, aiFirstScore, runAIFirst } from './aiFirst';
 import { NODE_TYPE_META } from './processSchema';
 
 function laneName(p: ProcessMap, laneId: string): string {
@@ -11,10 +12,101 @@ function list(items?: string[]): string {
   return items.join(', ');
 }
 
+/** Ficha ejecutiva: resumen → actual → futuro → agentes → automatizaciones → roadmap. */
+function toExecutiveMarkdown(p: ProcessMap): string {
+  const health = runHealthCheck(p);
+  const report = runAIFirst(p);
+  const ai = aiFirstScore(p);
+  const md: string[] = [];
+
+  md.push(`# ${p.title} — Ficha de implementación`);
+  md.push('');
+  md.push(`> ${p.description || 'Proceso mapeado con GEN+ AI Process.'}`);
+  md.push('');
+  md.push(`**Área:** ${p.area ?? '—'} · **Áreas involucradas:** ${list(p.involvedAreas)} · **Responsable:** ${p.owner ?? '—'}`);
+  md.push(`**Estado:** ${p.status ?? 'mapeado'} · **Health Score:** ${health.score}/100 · **AI First Score:** ${ai}/100 (${aiFirstBand(ai)})`);
+  md.push('');
+
+  md.push('## 1. Resumen ejecutivo');
+  md.push(p.objective || '—');
+  if (p.northStarMetric) md.push(`\n**North Star:** ${p.northStarMetric}`);
+  md.push('');
+
+  md.push('## 2. Problema');
+  md.push(p.problem || p.context || '—');
+  md.push('');
+
+  md.push('## 3. Proceso actual');
+  (p.currentStateSummary ? [p.currentStateSummary] : report.currentSummary).forEach((s) => md.push(`- ${s}`));
+  md.push('');
+  p.lanes.forEach((lane) => {
+    const nodes = p.nodes.filter((n) => n.laneId === lane.id && !['start', 'end'].includes(n.type));
+    if (!nodes.length) return;
+    md.push(`**${lane.name}:** ${nodes.map((n) => n.title).join(' → ')}`);
+  });
+  md.push('');
+
+  md.push('## 4. Métricas');
+  if (p.metrics.length) {
+    md.push('| Métrica | Fórmula | Meta | Frecuencia | Dueño |');
+    md.push('|---|---|---|---|---|');
+    p.metrics.forEach((m) => md.push(`| ${m.name} | ${m.formula} | ${m.target} | ${m.frequency ?? '—'} | ${m.owner ?? '—'} |`));
+  } else md.push('— Definir métricas en el paso Medir.');
+  md.push('');
+
+  md.push('## 5. Proceso futuro AI First');
+  (p.futureStateSummary ? [p.futureStateSummary] : report.futureSummary).forEach((s) => md.push(`- ${s}`));
+  md.push('');
+  md.push('**Rediseño por actividad:**');
+  report.classifications.forEach((c) => md.push(`- ${c.title} → **${c.action.replace('_', ' ')}** (${c.reason})`));
+  md.push('');
+
+  md.push('## 6. Agentes IA recomendados');
+  const agents = p.agents?.length ? p.agents : report.agents;
+  if (agents.length) {
+    agents.forEach((a) => {
+      md.push(`- **${a.name}** — ${a.role}.`);
+      md.push(`  - Objetivo: ${a.objective} · Autonomía: ${a.autonomyLevel} · Supervisor: ${a.supervisor ?? '—'} · KPI: ${a.kpi ?? '—'}`);
+    });
+  } else md.push('—');
+  md.push('');
+
+  md.push('## 7. Automatizaciones');
+  if (p.automations.length) {
+    p.automations.forEach((a) => md.push(`- **${a.name}**: ${a.trigger} → ${a.action} ${a.humanInTheLoop ? '(con validación humana)' : ''}`));
+  } else md.push('—');
+  md.push('');
+
+  md.push('## 8. Roadmap 30/60/90');
+  const roadmap = p.roadmap?.length ? p.roadmap : report.roadmap;
+  (['30', '60', '90'] as const).forEach((tf) => {
+    const items = roadmap.filter((r) => r.timeframe === tf);
+    if (!items.length) return;
+    md.push(`\n### ${tf} días`);
+    items.forEach((r) => md.push(`- [ ] ${r.title} _(prioridad ${r.priority}, impacto ${r.impact}, esfuerzo ${r.effort})_`));
+  });
+  md.push('');
+
+  md.push('## 9. Riesgos');
+  if (p.risks.length) p.risks.forEach((r) => md.push(`- **${r.name}** (sev. ${r.severity ?? r.probability * r.impact}): ${r.mitigation}`));
+  else md.push('—');
+  report.hiddenRisks.forEach((r) => md.push(`- _Riesgo del rediseño:_ ${r}`));
+  md.push('');
+
+  md.push('## 10. Próximos pasos');
+  md.push(`1. ${report.nextStep}`);
+  report.quickWins.forEach((w, i) => md.push(`${i + 2}. ${w}`));
+  md.push('');
+  md.push('---');
+  md.push(`_Generado con **GEN+ AI Process** · ${new Date().toLocaleString('es-PE')}_`);
+  return md.join('\n');
+}
+
 /**
- * Executive + technical Markdown export following the required 12-section structure.
+ * Executive ficha or technical 12-section Markdown export.
  */
 export function toMarkdown(p: ProcessMap, mode: 'executive' | 'technical' = 'technical'): string {
+  if (mode === 'executive') return toExecutiveMarkdown(p);
   const health = runHealthCheck(p);
   const md: string[] = [];
 

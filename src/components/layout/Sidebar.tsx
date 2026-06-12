@@ -1,16 +1,12 @@
 import {
-  Sparkles,
-  LayoutTemplate,
-  Library,
+  LayoutDashboard,
+  FolderKanban,
+  Plus,
   Gauge,
-  ShieldAlert,
-  Workflow,
-  HeartPulse,
+  Sparkles,
   Download,
-  Map as MapIcon,
   Settings,
   Home,
-  Plus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
@@ -19,15 +15,12 @@ import { LogoMark } from '../brand/Logo';
 import { cn } from '../../lib/cn';
 
 const items: { id: Section; label: string; icon: LucideIcon }[] = [
-  { id: 'builder', label: 'Constructor IA', icon: Sparkles },
-  { id: 'templates', label: 'Plantillas', icon: LayoutTemplate },
-  { id: 'library', label: 'Mis procesos', icon: Library },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'processes', label: 'Procesos', icon: FolderKanban },
+  { id: 'capture', label: 'Nuevo mapa', icon: Plus },
   { id: 'metrics', label: 'Métricas', icon: Gauge },
-  { id: 'risks', label: 'Riesgos', icon: ShieldAlert },
-  { id: 'automations', label: 'Automatizaciones', icon: Workflow },
-  { id: 'health', label: 'Health Check', icon: HeartPulse },
-  { id: 'export', label: 'Exportar', icon: Download },
-  { id: 'roadmap', label: 'Roadmap', icon: MapIcon },
+  { id: 'aifirst', label: 'AI First', icon: Sparkles },
+  { id: 'implement', label: 'Exportar', icon: Download },
   { id: 'settings', label: 'Configuración', icon: Settings },
 ];
 
@@ -69,7 +62,6 @@ export function Sidebar() {
   const section = useProcessStore((s) => s.section);
   const setSection = useProcessStore((s) => s.setSection);
   const setView = useProcessStore((s) => s.setView);
-  const newBlank = useProcessStore((s) => s.newBlank);
 
   return (
     <aside className="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-[var(--gen-border)] bg-ink-850/60 py-3">
@@ -83,7 +75,6 @@ export function Sidebar() {
       </button>
 
       <RailButton label="Ir al inicio" icon={Home} onClick={() => setView('home')} />
-      <RailButton label="Nuevo proceso" icon={Plus} onClick={newBlank} />
 
       <div className="my-1.5 h-px w-7 bg-[var(--gen-border)]" />
 

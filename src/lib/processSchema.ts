@@ -137,6 +137,11 @@ export function emptyProcess(title = 'Nuevo proceso'): ProcessMap {
     objective: '',
     version: '1.0',
     maturityLevel: 'idea',
+    status: 'borrador',
+    favorite: false,
+    involvedAreas: [],
+    agents: [],
+    roadmap: [],
     tags: [],
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -152,6 +157,16 @@ export function emptyProcess(title = 'Nuevo proceso'): ProcessMap {
     implementationChecklist: [],
   };
 }
+
+export const STATUS_META: Record<NonNullable<ProcessMap['status']>, { label: string; color: string }> = {
+  borrador: { label: 'Borrador', color: '#6A98FF' },
+  mapeado: { label: 'Mapeado', color: '#2165FF' },
+  medido: { label: 'Medido', color: '#22D3EE' },
+  optimizado: { label: 'Optimizado', color: '#8B5CF6' },
+  en_implementacion: { label: 'En implementación', color: '#F5A623' },
+  implementado: { label: 'Implementado', color: '#34D399' },
+  mejora_continua: { label: 'Mejora continua', color: '#34D399' },
+};
 
 /** Severity band color for a risk (1..25). */
 export function riskSeverityColor(severity: number): string {

@@ -75,6 +75,16 @@ export function ProcessCanvas() {
 
   return (
     <div className="relative h-full w-full">
+      {process.nodes.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <div className="gen-surface max-w-sm rounded-card-lg p-6 text-center shadow-elevated">
+            <p className="text-[14px] font-semibold">Tu canvas está vacío</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed gen-text-muted">
+              No necesitas dibujar perfecto. Describe tu proceso en <b>Capturar</b> y generamos la lógica; luego edita aquí los nodos.
+            </p>
+          </div>
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}

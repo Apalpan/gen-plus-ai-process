@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, Save, Sun, Moon, Github, Star, Check } from 'lucide-react';
+import { Download, Save, Sun, Moon, Star, Check } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { Logo } from '../brand/Logo';
 import { Button } from '../ui/Button';
@@ -42,11 +42,8 @@ export function Topbar() {
       <Button variant="secondary" size="sm" onClick={save} leftIcon={saved ? <Check size={16} /> : <Save size={16} />}>
         <span className="hidden sm:inline">{saved ? 'Guardado' : 'Guardar'}</span>
       </Button>
-      <Button variant="secondary" size="sm" onClick={() => setSection('export')} leftIcon={<Download size={16} />}>
+      <Button variant="primary" size="sm" onClick={() => setSection('implement')} leftIcon={<Download size={16} />}>
         <span className="hidden sm:inline">Exportar</span>
-      </Button>
-      <Button variant="primary" size="sm" onClick={() => setSection('roadmap')} leftIcon={<Github size={16} />}>
-        <span className="hidden md:inline">Desplegar</span>
       </Button>
     </header>
   );

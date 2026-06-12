@@ -14,7 +14,9 @@ import {
   buildAcademico,
   buildAdmin,
   buildComercial,
+  buildCoordinacion,
   buildEventos,
+  buildFinanzas,
   buildGeneric,
   buildObra,
   buildVDC,
@@ -24,16 +26,19 @@ import { callLLM, isLLMConfigured, type LLMConfig } from './llm';
 import { MASTER_PROMPT, buildUserMessage } from './masterPrompt';
 
 const KEYWORDS: Record<ProcessKind, string[]> = {
-  obra: ['consulta', 'duda', 'obra', 'plano', 'rfi', 'sdi', 'campo', 'cde', 'interferenc', 'encofrado', 'cierre de consulta', 'trazabilidad'],
+  obra: ['consulta', 'duda', 'obra', 'plano', 'rfi', 'sdi', 'campo', 'cde', 'interferenc', 'encofrado', 'avance', 'cierre de consulta'],
   bim_via: ['bim', 'vdc', ' via', 'ice', 'ppm', 'modelo federado', 'clash', 'lookahead', 'federado', 'publicar modelo'],
   ice: ['sesión ice'],
   ppm: ['lookahead', 'compromiso'],
-  comercial: ['lead', 'venta', 'comercial', 'propuesta', 'negociaci', 'crm', 'pipeline', 'b2b', 'cotizaci', 'cierre de venta'],
-  academico: ['curso', 'academ', 'alumno', 'estudiante', 'instructor', 'cohorte', 'certific', 'temario', 'programa formativo'],
-  administracion: ['administrat', 'factura', 'tramite', 'trámite', 'aprobaci', 'expediente', 'archivo', 'planilla'],
+  comercial: ['lead', 'venta', 'comercial', 'propuesta', 'negociaci', 'crm', 'pipeline', 'b2b', 'cotizaci', 'cierre de venta', 'contrato'],
+  operaciones: ['tarea', 'coordinaci', 'asignaci', 'bloqueo', 'solicitud', 'entrega', 'operaci', 'reuni', 'acuerdo', 'pendiente'],
+  finanzas: ['pago', 'factura', 'cobranza', 'presupuesto', 'gasto', 'caja', 'conciliaci', 'tesorer', 'reporte financiero'],
+  marketing: ['campaña', 'contenido', 'redes', 'publicaci', 'marketing', 'engagement'],
+  academico: ['curso', 'academ', 'alumno', 'estudiante', 'instructor', 'cohorte', 'certific', 'temario', 'clase', 'sesión'],
+  administracion: ['administrat', 'tramite', 'trámite', 'expediente', 'archivo', 'planilla'],
   evento: ['sponsor', 'evento', 'patrocin', 'activaci', 'auspici'],
   soporte: ['ticket', 'soporte', 'incidencia', 'mesa de ayuda'],
-  producto: ['feature', 'producto', 'roadmap', 'release', 'backlog'],
+  producto: ['feature', 'producto', 'release', 'backlog'],
   custom: [],
 };
 
@@ -57,7 +62,12 @@ function buildForKind(kind: ProcessKind): ProcessMap {
     case 'ppm':
       return buildVDC();
     case 'comercial':
+    case 'marketing':
       return buildComercial();
+    case 'operaciones':
+      return buildCoordinacion();
+    case 'finanzas':
+      return buildFinanzas();
     case 'academico':
       return buildAcademico();
     case 'evento':
@@ -77,6 +87,23 @@ function deriveTitle(input: string, fallback: string): string {
   return fallback;
 }
 
+/** Applies the capture-step fields (Paso 1) onto a generated process. */
+function applyCapture(p: ProcessMap, prompt: ProcessPrompt): ProcessMap {
+  return {
+    ...p,
+    title: prompt.name?.trim() || p.title,
+    area: prompt.area?.trim() || p.area,
+    involvedAreas: prompt.involvedAreas?.length ? prompt.involvedAreas : p.involvedAreas,
+    problem: prompt.problem?.trim() || p.problem,
+    expectedResult: prompt.expectedResult?.trim() || p.expectedResult,
+    objective: prompt.expectedResult?.trim() || p.objective,
+    context: [prompt.input.trim(), prompt.problem?.trim() ? `Problema principal: ${prompt.problem.trim()}` : '']
+      .filter(Boolean)
+      .join('\n') || p.context,
+    status: 'mapeado',
+  };
+}
+
 /**
  * Main generation entrypoint. Uses a real LLM when configured, otherwise the
  * local heuristic engine. The contract is the ProcessMap schema either way.
@@ -84,9 +111,9 @@ function deriveTitle(input: string, fallback: string): string {
 export async function generateProcessFromAI(prompt: ProcessPrompt, config?: LLMConfig): Promise<ProcessMap> {
   if (isLLMConfigured(config)) {
     const raw = await callLLM(config, MASTER_PROMPT, buildUserMessage(prompt));
-    return normalizeGenerated(raw, prompt);
+    return applyCapture(normalizeGenerated(raw, prompt), prompt);
   }
-  return heuristicGenerate(prompt);
+  return applyCapture(await heuristicGenerate(prompt), prompt);
 }
 
 async function heuristicGenerate(prompt: ProcessPrompt): Promise<ProcessMap> {
@@ -100,7 +127,7 @@ async function heuristicGenerate(prompt: ProcessPrompt): Promise<ProcessMap> {
   return {
     ...base,
     id: 'gen_' + Date.now().toString(36),
-    title: prompt.input.trim() ? deriveTitle(prompt.input, base.title) : base.title,
+    title: prompt.name?.trim() || (prompt.input.trim() ? deriveTitle(prompt.input, base.title) : base.title),
     context: prompt.input.trim() ? prompt.input.trim() : base.context,
     maturityLevel: prompt.maturity,
     tags: Array.from(new Set([...base.tags, kind])),

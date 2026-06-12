@@ -62,8 +62,23 @@ export function buildUserMessage(params: {
   detail: string;
   format: string;
   maturity: string;
+  name?: string;
+  area?: string;
+  involvedAreas?: string[];
+  problem?: string;
+  expectedResult?: string;
 }): string {
-  return `Idea / contexto del usuario (proceso de coordinación / flujo de trabajo):
+  const extra = [
+    params.name ? `- Nombre del proceso: ${params.name}` : '',
+    params.area ? `- Área principal: ${params.area}` : '',
+    params.involvedAreas?.length ? `- Áreas involucradas: ${params.involvedAreas.join(', ')}` : '',
+    params.problem ? `- Problema principal: ${params.problem}` : '',
+    params.expectedResult ? `- Resultado esperado: ${params.expectedResult}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return `Descripción del proceso (cómo se trabaja hoy, en lenguaje natural):
 """
 ${params.input}
 """
@@ -73,6 +88,7 @@ Parámetros:
 - Nivel de detalle: ${params.detail}
 - Formato de salida preferido: ${params.format}
 - Madurez objetivo: ${params.maturity}
+${extra}
 
 ${SCHEMA_HINT}`;
 }

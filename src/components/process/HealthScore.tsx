@@ -47,7 +47,7 @@ export function HealthScoreCompact() {
 
   return (
     <button
-      onClick={() => setSection('health')}
+      onClick={() => setSection('metrics')}
       className={cn(
         'flex w-full items-center gap-3 border-b border-[var(--gen-border)] px-4 py-3 text-left transition-colors hover:bg-white/[0.03]',
       )}

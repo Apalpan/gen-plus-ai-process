@@ -1,9 +1,19 @@
-import { Target, Compass, Users, Gauge, ShieldAlert, Workflow, MousePointerClick } from 'lucide-react';
+import { Target, Compass, Users, Gauge, ShieldAlert, Workflow, MousePointerClick, ArrowRight } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
+import type { Section } from '../../store/useProcessStore';
 import { Badge } from '../ui/Badge';
 import { Field, Select, Textarea } from '../ui/Field';
 import { riskSeverityColor } from '../../lib/processSchema';
-import type { MaturityLevel } from '../../types/process';
+import type { MaturityLevel, ProcessMap } from '../../types/process';
+
+function nextAction(p: ProcessMap): { label: string; section: Section } {
+  if (p.nodes.length === 0) return { label: 'Captura tu proceso en lenguaje natural', section: 'capture' };
+  const acts = p.nodes.filter((n) => ['activity', 'approval', 'handoff'].includes(n.type));
+  if (acts.some((n) => !n.responsible?.trim())) return { label: 'Asigna responsables a las actividades', section: 'map' };
+  if (p.metrics.length === 0) return { label: 'Agrega métricas con fórmula y meta', section: 'metrics' };
+  if (!p.roadmap?.length) return { label: 'Genera tu plan AI First', section: 'aifirst' };
+  return { label: 'Exporta la ficha de implementación', section: 'implement' };
+}
 
 function SectionTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -19,8 +29,10 @@ const MATURITY: MaturityLevel[] = ['idea', 'current', 'optimized', 'automatable'
 export function ProcessSummary() {
   const process = useProcessStore((s) => s.process);
   const patchProcess = useProcessStore((s) => s.patchProcess);
+  const setSection = useProcessStore((s) => s.setSection);
 
   const topRisks = [...process.risks].sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0)).slice(0, 3);
+  const next = nextAction(process);
 
   return (
     <div className="flex h-full flex-col">
@@ -31,6 +43,14 @@ export function ProcessSummary() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
+        <button
+          onClick={() => setSection(next.section)}
+          className="mb-3 flex w-full items-center gap-2 rounded-btn border border-brand-400/35 bg-brand-500/[0.08] px-3 py-2 text-left transition-colors hover:bg-brand-500/[0.14]"
+        >
+          <ArrowRight size={14} className="shrink-0 text-brand-400" />
+          <span className="text-[12px] font-semibold leading-snug">{next.label}</span>
+        </button>
+
         <p className="text-[13px] leading-relaxed gen-text-secondary">{process.description}</p>
 
         <div className="mt-3 grid grid-cols-2 gap-2">

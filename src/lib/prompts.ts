@@ -29,7 +29,13 @@ automatizaciones y reportes. Mantén trazabilidad completa y métricas en tiempo
 
 ## Stack sugerido
 React + TypeScript en frontend; API REST/tRPC; Postgres; colas para automatizaciones; auth por rol.
-${integrationsBlock(integrations)}
+${integrationsBlock(integrations)}${
+    p.agents?.length
+      ? `\n## Agentes IA a implementar\n${p.agents
+          .map((a) => `- ${a.name}: ${a.role}. Autonomía: ${a.autonomyLevel}; supervisor: ${a.supervisor ?? '—'}; KPI: ${a.kpi ?? '—'}.`)
+          .join('\n')}\n`
+      : ''
+  }
 ## Contrato de dominio (ProcessMap JSON)
 \`\`\`json
 ${toJSON(p)}

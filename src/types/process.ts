@@ -57,6 +57,16 @@ export type Priority = 'low' | 'medium' | 'high' | 'critical';
 export type MaturityLevel = 'idea' | 'current' | 'optimized' | 'automatable';
 export type LeadingLagging = 'leading' | 'lagging';
 
+/** Lifecycle of a mapped process inside the production system. */
+export type ProcessStatus =
+  | 'borrador'
+  | 'mapeado'
+  | 'medido'
+  | 'optimizado'
+  | 'en_implementacion'
+  | 'implementado'
+  | 'mejora_continua';
+
 export interface XY {
   x: number;
   y: number;
@@ -175,6 +185,32 @@ export interface ChecklistItem {
   phase?: string;
 }
 
+export interface AIAgentRecommendation {
+  id: string;
+  name: string;
+  role: string;
+  objective: string;
+  inputs?: string[];
+  outputs?: string[];
+  tools?: string[];
+  autonomyLevel: 'asistido' | 'supervisado' | 'autonomo';
+  supervisor?: string;
+  kpi?: string;
+  relatedNodeIds?: string[];
+}
+
+export interface RoadmapItem {
+  id: string;
+  timeframe: '30' | '60' | '90';
+  title: string;
+  description?: string;
+  priority: 'alta' | 'media' | 'baja';
+  impact: 'alto' | 'medio' | 'bajo';
+  effort: 'alto' | 'medio' | 'bajo';
+  owner?: string;
+  status: 'pendiente' | 'en_curso' | 'hecho';
+}
+
 export interface ProcessMap {
   id: string;
   title: string;
@@ -188,6 +224,17 @@ export interface ProcessMap {
   createdAt: string;
   updatedAt: string;
   northStarMetric?: string;
+  /* Production-system fields (optional for backward compatibility) */
+  area?: string;
+  involvedAreas?: string[];
+  status?: ProcessStatus;
+  problem?: string;
+  expectedResult?: string;
+  favorite?: boolean;
+  currentStateSummary?: string;
+  futureStateSummary?: string;
+  agents?: AIAgentRecommendation[];
+  roadmap?: RoadmapItem[];
   lanes: Lane[];
   nodes: ProcessNodeData[];
   edges: ProcessEdgeData[];
@@ -208,6 +255,9 @@ export type ProcessKind =
   | 'ice'
   | 'ppm'
   | 'comercial'
+  | 'operaciones'
+  | 'finanzas'
+  | 'marketing'
   | 'academico'
   | 'administracion'
   | 'evento'
@@ -231,6 +281,12 @@ export interface ProcessPrompt {
   detail: DetailLevel;
   format: OutputFormat;
   maturity: MaturityLevel;
+  /* Capture-step fields (Paso 1) */
+  name?: string;
+  area?: string;
+  involvedAreas?: string[];
+  problem?: string;
+  expectedResult?: string;
 }
 
 /* ---- Health check ---- */
@@ -250,4 +306,38 @@ export interface HealthReport {
   band: 'weak' | 'incomplete' | 'implementable' | 'hardened';
   bandLabel: string;
   items: HealthCheckItem[];
+}
+
+/* ---- AI First analysis ---- */
+
+export type AIFirstAction =
+  | 'mantener_humano'
+  | 'agente_ia'
+  | 'automatizar'
+  | 'simplificar'
+  | 'eliminar';
+
+export interface NodeClassification {
+  nodeId: string;
+  title: string;
+  action: AIFirstAction;
+  reason: string;
+}
+
+export interface AIFirstReport {
+  score: number; // 0..100
+  bandLabel: string;
+  diagnosis: string;
+  recommendation: string;
+  nextStep: string;
+  automationPotential: number; // 0..100
+  classifications: NodeClassification[];
+  improvements: string[];
+  quickWins: string[];
+  hiddenRisks: string[];
+  agents: AIAgentRecommendation[];
+  automations: Automation[];
+  roadmap: RoadmapItem[];
+  currentSummary: string[];
+  futureSummary: string[];
 }

@@ -14,25 +14,28 @@ import type {
 } from '../types/process';
 import { autoLayout } from '../lib/processEngine';
 import { runHealthCheck } from '../lib/health';
+import { runAIFirst } from '../lib/aiFirst';
 import { emptyProcess, makeAutomation, makeMetric, makeNode, makeRisk, nowIso } from '../lib/processSchema';
-import { buildObra, getTemplateById } from '../data/templates';
+import { buildCoordinacion, buildFinanzas, buildObra, getTemplateById } from '../data/templates';
 import { generateProcessFromAI } from '../ai/ProcessGenerator';
 import { runCopilot } from '../ai/copilot';
 import { storage } from '../lib/storage';
 import { emptyLLMConfig, type Integration, type LLMConfig } from '../ai/llm';
 
 export type View = 'home' | 'app';
+
+/** 6 módulos + configuración. capture/map/metrics/aifirst/implement forman el flujo de 5 pasos. */
 export type Section =
-  | 'builder'
-  | 'templates'
-  | 'library'
+  | 'dashboard'
+  | 'processes'
+  | 'capture'
+  | 'map'
   | 'metrics'
-  | 'risks'
-  | 'automations'
-  | 'health'
-  | 'export'
-  | 'roadmap'
+  | 'aifirst'
+  | 'implement'
   | 'settings';
+
+export const FLOW_SECTIONS: Section[] = ['capture', 'map', 'metrics', 'aifirst', 'implement'];
 
 export interface SavedProcess {
   id: string;
@@ -112,6 +115,10 @@ interface ProcessState {
   renameLibraryItem: (id: string, title: string) => void;
   duplicateLibraryItem: (id: string) => void;
   deleteLibraryItem: (id: string) => void;
+  toggleFavorite: (id: string) => void;
+
+  // AI First
+  applyAIFirst: () => void;
 
   // copilot
   sendCopilot: (command: string) => void;
@@ -127,16 +134,29 @@ if (typeof document !== 'undefined') {
   document.documentElement.classList.toggle('dark', initialTheme === 'dark');
 }
 
+/** Primera ejecución: siembra 2 procesos demo para que Dashboard y Procesos no estén vacíos. */
+const initialLibrary = ((): SavedProcess[] => {
+  const lib = storage.read<SavedProcess[]>('library', []);
+  if (lib.length > 0 || storage.read('demoSeeded', false)) return lib;
+  const demos: SavedProcess[] = [
+    { ...buildCoordinacion(), status: 'medido' as const, area: 'Operaciones', favorite: true },
+    { ...buildFinanzas(), status: 'mapeado' as const, area: 'Finanzas' },
+  ].map((p) => ({ id: p.id, title: p.title, updatedAt: p.updatedAt, maturityLevel: p.maturityLevel, process: p }));
+  storage.write('demoSeeded', true);
+  storage.write('library', demos);
+  return demos;
+})();
+
 export const useProcessStore = create<ProcessState>((set, get) => ({
   view: 'home',
-  section: 'builder',
+  section: 'dashboard',
   theme: initialTheme,
   process: initialProcess,
   selectedNodeId: null,
   isGenerating: false,
   llmConfig: storage.read<LLMConfig>('llm', emptyLLMConfig()),
   integrations: storage.read<Integration[]>('integrations', []),
-  library: storage.read<SavedProcess[]>('library', []),
+  library: initialLibrary,
   chat: [
     {
       id: 'welcome',
@@ -171,12 +191,12 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
     const tpl = getTemplateById(id);
     if (!tpl) return;
     const p = tpl.build();
-    set({ process: { ...p, nodes: autoLayout(p) }, selectedNodeId: null, section: 'builder', view: 'app' });
+    set({ process: { ...p, nodes: autoLayout(p) }, selectedNodeId: null, section: 'map', view: 'app' });
   },
 
   newBlank: () => {
     const p = emptyProcess();
-    set({ process: p, selectedNodeId: null, view: 'app', section: 'builder' });
+    set({ process: p, selectedNodeId: null, view: 'app', section: 'capture' });
   },
 
   generate: async (prompt) => {
@@ -191,7 +211,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
         selectedNodeId: null,
         isGenerating: false,
         view: 'app',
-        section: 'builder',
+        section: 'map',
       });
       const report = runHealthCheck(p);
       set((st) => ({
@@ -398,7 +418,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
     set((st) => {
       const item = st.library.find((s) => s.id === id);
       if (!item) return st;
-      return { process: { ...item.process, nodes: autoLayout(item.process) }, selectedNodeId: null, view: 'app', section: 'builder' };
+      return { process: { ...item.process, nodes: autoLayout(item.process) }, selectedNodeId: null, view: 'app', section: 'map' };
     }),
   renameLibraryItem: (id, title) =>
     set((st) => {
@@ -428,6 +448,45 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
       const library = st.library.filter((s) => s.id !== id);
       storage.write('library', library);
       return { library };
+    }),
+
+  toggleFavorite: (id) =>
+    set((st) => {
+      const library = st.library.map((s) =>
+        s.id === id ? { ...s, process: { ...s.process, favorite: !s.process.favorite } } : s,
+      );
+      storage.write('library', library);
+      const process =
+        st.process.id === id ? { ...st.process, favorite: !st.process.favorite } : st.process;
+      return { library, process };
+    }),
+
+  applyAIFirst: () =>
+    set((st) => {
+      const report = runAIFirst(st.process);
+      const existing = new Set(st.process.automations.map((a) => a.name));
+      const newAutos = report.automations.filter((a) => !existing.has(a.name));
+      return {
+        process: {
+          ...st.process,
+          agents: report.agents,
+          automations: [...st.process.automations, ...newAutos],
+          roadmap: report.roadmap,
+          currentStateSummary: report.currentSummary.join(' '),
+          futureStateSummary: report.futureSummary.join(' '),
+          status: 'optimizado',
+          maturityLevel: 'optimized',
+          updatedAt: nowIso(),
+        },
+        chat: [
+          ...st.chat,
+          {
+            id: 'a' + Date.now(),
+            role: 'assistant' as const,
+            text: `Plan AI First generado: ${report.agents.length} agente(s), ${report.automations.length} automatización(es) y roadmap 30/60/90. AI First Score: ${report.score}/100 (${report.bandLabel}).`,
+          },
+        ],
+      };
     }),
 
   sendCopilot: (command) => {

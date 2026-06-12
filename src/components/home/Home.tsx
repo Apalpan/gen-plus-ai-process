@@ -1,16 +1,16 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Workflow, Gauge, Zap, FileCheck2, Download, ArrowRight, Play, Github } from 'lucide-react';
+import { Sparkles, Workflow, Gauge, PenLine, Rocket, ArrowRight, Play, Github } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { Logo } from '../brand/Logo';
 import { Button } from '../ui/Button';
 
 const VALUES: { icon: LucideIcon; title: string; desc: string }[] = [
-  { icon: Workflow, title: 'Proceso lógico', desc: 'Swimlanes, decisiones, roles y handoffs.' },
-  { icon: Gauge, title: 'Métricas conectadas', desc: 'Cadena causal de objetivos y factores.' },
-  { icon: Zap, title: 'Automatización', desc: 'Triggers, acciones y human-in-the-loop.' },
-  { icon: FileCheck2, title: 'Trazabilidad', desc: 'Documentos, evidencia y RACI.' },
-  { icon: Download, title: 'Exportación', desc: 'JSON, Markdown, Mermaid, PNG y prompts.' },
+  { icon: PenLine, title: '1 · Capturar', desc: 'Describe el proceso como en una reunión.' },
+  { icon: Workflow, title: '2 · Mapear', desc: 'Mapa visual con áreas, roles y decisiones.' },
+  { icon: Gauge, title: '3 · Medir', desc: 'Métricas, riesgos y Health Score.' },
+  { icon: Sparkles, title: '4 · AI First', desc: 'Rediseño con agentes y automatizaciones.' },
+  { icon: Rocket, title: '5 · Implementar', desc: 'Ficha, roadmap y prompts listos.' },
 ];
 
 function HeroDecoration() {
@@ -48,7 +48,7 @@ export function Home() {
   const loadTemplate = useProcessStore((s) => s.loadTemplate);
 
   const start = () => {
-    setSection('builder');
+    setSection('capture');
     setView('app');
   };
 
@@ -83,7 +83,7 @@ export function Home() {
             className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3.5 py-1.5 text-[12.5px] font-medium text-brand-200"
           >
             <Sparkles size={14} className="text-brand-400" />
-            Herramienta de mapeo de procesos para flujos de coordinación
+            Mapea tu proceso · Mídelo · Rediséñalo con IA · Impleméntalo
           </motion.div>
 
           <motion.h1
@@ -105,8 +105,8 @@ export function Home() {
             transition={{ duration: 0.55, delay: 0.12 }}
             className="mt-5 max-w-2xl text-[15px] leading-relaxed text-[var(--gen-text-secondary)] sm:text-base"
           >
-            Convierte reuniones, acuerdos y coordinaciones en flujos de trabajo claros — con responsables, métricas y
-            automatizaciones — que todo el equipo puede guardar, editar y exportar.
+            Dime cómo trabajas hoy: convierte reuniones y dolores operativos en procesos claros y medibles, y descubre
+            cómo deberías trabajar mañana con agentes IA y automatizaciones.
           </motion.p>
 
           <motion.div
