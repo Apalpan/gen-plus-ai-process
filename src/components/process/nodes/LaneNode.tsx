@@ -1,6 +1,8 @@
 import { memo } from 'react';
 import type { NodeProps } from 'reactflow';
 import type { Lane } from '../../../types/process';
+import { useProcessStore } from '../../../store/useProcessStore';
+import { cn } from '../../../lib/cn';
 
 interface LaneNodeData {
   lane: Lane;
@@ -10,28 +12,30 @@ interface LaneNodeData {
 
 function LaneNodeImpl({ data }: NodeProps<LaneNodeData>) {
   const { lane, width, height } = data;
+  const highlightLaneId = useProcessStore((s) => s.highlightLaneId);
+  const setHighlightLane = useProcessStore((s) => s.setHighlightLane);
+  const active = highlightLaneId === lane.id;
+  const dim = highlightLaneId !== null && !active;
+
   return (
     <div
       style={{ width, height }}
-      className="pointer-events-none relative overflow-hidden rounded-xl"
+      onClick={() => setHighlightLane(lane.id)}
+      className={cn('relative cursor-pointer overflow-hidden rounded-xl transition-opacity duration-200', dim && 'opacity-40')}
     >
       <div
         className="absolute inset-0 rounded-xl border"
         style={{
-          background: `linear-gradient(90deg, ${lane.color}14 0%, ${lane.color}05 40%, transparent 100%)`,
-          borderColor: `${lane.color}26`,
+          background: active
+            ? `linear-gradient(90deg, ${lane.color}24 0%, ${lane.color}0c 50%, transparent 100%)`
+            : `linear-gradient(90deg, ${lane.color}12 0%, ${lane.color}05 40%, transparent 100%)`,
+          borderColor: active ? `${lane.color}55` : `${lane.color}22`,
         }}
       />
-      <div className="absolute left-0 top-0 h-full w-1 rounded-l-xl" style={{ background: lane.color }} />
-      <div className="absolute left-4 top-3 flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />
-        <span className="text-[12px] font-bold uppercase tracking-wider" style={{ color: lane.color }}>
-          {lane.name}
-        </span>
-        {lane.ownerRole && (
-          <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-[10.5px] gen-text-muted">{lane.ownerRole}</span>
-        )}
-      </div>
+      {/* franja de color a la izquierda */}
+      <div className="absolute left-0 top-0 h-full rounded-l-xl" style={{ width: active ? 5 : 3, background: lane.color }} />
+      {/* línea divisoria inferior sutil */}
+      <div className="absolute bottom-0 left-0 h-px w-full" style={{ background: `${lane.color}1a` }} />
     </div>
   );
 }

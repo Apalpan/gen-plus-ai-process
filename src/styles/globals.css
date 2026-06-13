@@ -123,10 +123,27 @@
   border-radius: 12px;
 }
 .react-flow__handle {
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
   background: var(--gen-blue-light);
   border: 2px solid var(--gen-bg);
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+/* Handles más fáciles de agarrar: crecen al pasar el cursor por el nodo */
+.react-flow__node:hover .react-flow__handle {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 4px rgba(77, 132, 255, 0.18);
+}
+.react-flow__handle:hover {
+  transform: scale(1.55) !important;
+  box-shadow: 0 0 0 5px rgba(77, 132, 255, 0.28);
+  cursor: crosshair;
+}
+.react-flow__handle.connecting {
+  background: var(--gen-green);
+}
+.react-flow__connection-path {
+  stroke-width: 2.5;
 }
 .react-flow__node {
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -134,4 +151,19 @@
 .react-flow__node:focus,
 .react-flow__node:focus-visible {
   outline: none;
+}
+
+/* ---- Vista 3D (presentación, solo lectura) ---- */
+.gen-canvas-3d .react-flow {
+  transform: perspective(2200px) rotateX(54deg) rotateZ(-7deg) scale(0.82);
+  transform-origin: center 64%;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gen-canvas-3d .react-flow__node {
+  box-shadow: 0 26px 40px rgba(0, 0, 0, 0.45) !important;
+}
+.gen-canvas-2d .react-flow,
+.gen-canvas-basic .react-flow {
+  transform: none;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }

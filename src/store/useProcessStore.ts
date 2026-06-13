@@ -79,6 +79,8 @@ interface ProcessState {
   chat: ChatMessage[];
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
+  viewMode: 'basic' | '2d' | '3d';
+  highlightLaneId: string | null;
   llmConfig: LLMConfig;
   integrations: Integration[];
   library: SavedProcess[];
@@ -104,12 +106,14 @@ interface ProcessState {
   patchNode: (id: string, patch: Partial<ProcessNodeData>) => void;
   moveNode: (id: string, position: XY) => void;
   addNode: (type: NodeType, laneId?: string) => void;
-  addConnectedNode: (sourceId: string, type: NodeType, edgeType?: EdgeType) => void;
+  addConnectedNode: (sourceId: string, type: NodeType, edgeType?: EdgeType, position?: XY) => void;
   seedSkeleton: () => void;
   deleteNode: (id: string) => void;
   addEdge: (edge: ProcessEdgeData) => void;
   deleteEdge: (id: string) => void;
   togglePanel: (side: 'left' | 'right') => void;
+  setViewMode: (m: 'basic' | '2d' | '3d') => void;
+  setHighlightLane: (laneId: string | null) => void;
   addLane: () => void;
   patchLane: (id: string, patch: Partial<Lane>) => void;
   toggleChecklist: (id: string) => void;
@@ -179,6 +183,8 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   isGenerating: false,
   leftPanelOpen: true,
   rightPanelOpen: true,
+  viewMode: '2d',
+  highlightLaneId: null,
   llmConfig: storage.read<LLMConfig>('llm', emptyLLMConfig()),
   integrations: storage.read<Integration[]>('integrations', []),
   library: initialLibrary,
@@ -298,25 +304,29 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
       return { process: { ...st.process, lanes, nodes: [...st.process.nodes, node], updatedAt: nowIso() }, selectedNodeId: node.id };
     }),
 
-  addConnectedNode: (sourceId, type, edgeType = 'sequence') =>
+  addConnectedNode: (sourceId, type, edgeType = 'sequence', position) =>
     set((st) => {
       const source = st.process.nodes.find((n) => n.id === sourceId);
       if (!source) return st;
-      const baseX = source.position.x + 248;
-      let y = source.position.y + (edgeType === 'decision_no' ? 132 : edgeType === 'decision_yes' ? -8 : 0);
-      const occupied = (yy: number) =>
-        st.process.nodes.some((n) => Math.abs(n.position.x - baseX) < 130 && Math.abs(n.position.y - yy) < 76);
-      let guard = 0;
-      while (occupied(y) && guard < 10) {
-        y += 84;
-        guard++;
+      let pos: XY;
+      let laneId = source.laneId;
+      if (position) {
+        // dropped on the canvas → snap to the nearest lane band by Y
+        pos = position;
+        const idx = Math.max(0, Math.min(st.process.lanes.length - 1, Math.round((position.y - 46) / 168)));
+        laneId = st.process.lanes[idx]?.id ?? source.laneId;
+      } else {
+        const baseX = source.position.x + 248;
+        let y = source.position.y + (edgeType === 'decision_no' ? 132 : edgeType === 'decision_yes' ? -8 : 0);
+        const occupied = (yy: number) => st.process.nodes.some((n) => Math.abs(n.position.x - baseX) < 130 && Math.abs(n.position.y - yy) < 76);
+        let guard = 0;
+        while (occupied(y) && guard < 10) {
+          y += 84;
+          guard++;
+        }
+        pos = { x: baseX, y };
       }
-      const node = makeNode({
-        type,
-        title: NODE_DEFAULT_TITLE[type] ?? 'Nuevo paso',
-        laneId: source.laneId,
-        position: { x: baseX, y },
-      });
+      const node = makeNode({ type, title: NODE_DEFAULT_TITLE[type] ?? 'Nuevo paso', laneId, position: pos });
       const edge = makeEdge(sourceId, node.id, { type: edgeType });
       return {
         process: { ...st.process, nodes: [...st.process.nodes, node], edges: [...st.process.edges, edge], updatedAt: nowIso() },
@@ -347,6 +357,9 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
 
   togglePanel: (side) =>
     set((st) => (side === 'left' ? { leftPanelOpen: !st.leftPanelOpen } : { rightPanelOpen: !st.rightPanelOpen })),
+
+  setViewMode: (m) => set({ viewMode: m }),
+  setHighlightLane: (laneId) => set((st) => ({ highlightLaneId: st.highlightLaneId === laneId ? null : laneId })),
 
   deleteNode: (id) =>
     set((st) => ({
