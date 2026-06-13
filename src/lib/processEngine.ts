@@ -114,7 +114,7 @@ export function toFlowNodes(process: ProcessMap): Node[] {
 
   const processNodes: Node[] = process.nodes.map((n) => ({
     id: n.id,
-    type: 'process',
+    type: n.type === 'decision' ? 'decision' : n.type === 'start' || n.type === 'end' ? 'terminal' : 'process',
     position: n.position,
     data: { node: n, process },
     zIndex: 2,
@@ -126,30 +126,26 @@ export function toFlowNodes(process: ProcessMap): Node[] {
 export function toFlowEdges(process: ProcessMap): Edge[] {
   return process.edges.map((e: ProcessEdgeData) => {
     const meta = EDGE_TYPE_META[e.type];
+    const label = e.label ?? (e.type === 'decision_yes' ? 'Sí' : e.type === 'decision_no' ? 'No' : undefined);
     return {
       id: e.id,
       source: e.source,
       target: e.target,
-      type: 'smoothstep',
+      sourceHandle: e.type === 'decision_yes' ? 'yes' : e.type === 'decision_no' ? 'no' : undefined,
+      type: 'gen',
       animated: e.animated ?? (e.type === 'automation' || e.type === 'metric_impact'),
-      label: e.label ?? (e.type === 'decision_yes' ? 'Sí' : e.type === 'decision_no' ? 'No' : undefined),
-      labelStyle: { fill: '#E9F0FF', fontSize: 11, fontWeight: 600 },
-      labelBgStyle: { fill: '#071A36', fillOpacity: 0.92 },
-      labelBgPadding: [6, 3] as [number, number],
-      labelBgBorderRadius: 6,
       style: {
         stroke: meta.color,
-        strokeWidth: e.type === 'metric_impact' ? 1.5 + (e.strength ?? 0.5) * 2 : 2,
+        strokeWidth: e.type === 'metric_impact' ? 1.5 + (e.strength ?? 0.5) * 2 : 2.5,
         strokeDasharray: meta.dashed ? '6 5' : undefined,
-        opacity: 0.92,
       },
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color: meta.color,
-        width: 16,
-        height: 16,
+        width: 22,
+        height: 22,
       },
-      data: { edge: e },
+      data: { edge: e, label, color: meta.color },
       zIndex: 1,
     };
   });

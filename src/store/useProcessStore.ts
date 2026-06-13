@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   Automation,
+  EdgeType,
   HealthReport,
   Lane,
   Metric,
@@ -15,7 +16,22 @@ import type {
 import { autoLayout } from '../lib/processEngine';
 import { runHealthCheck } from '../lib/health';
 import { runAIFirst } from '../lib/aiFirst';
-import { emptyProcess, makeAutomation, makeMetric, makeNode, makeRisk, nowIso } from '../lib/processSchema';
+import { emptyProcess, makeAutomation, makeEdge, makeLane, makeMetric, makeNode, makeRisk, nowIso } from '../lib/processSchema';
+
+const NODE_DEFAULT_TITLE: Partial<Record<NodeType, string>> = {
+  start: 'Inicio',
+  end: 'Fin',
+  decision: '¿Decisión?',
+  activity: 'Nueva actividad',
+  document: 'Documento',
+  approval: 'Aprobación',
+  handoff: 'Traspaso',
+  automation: 'Automatización',
+  system: 'Sistema',
+  evidence: 'Evidencia',
+  metric: 'Métrica',
+  risk: 'Riesgo',
+};
 import { buildCoordinacion, buildFinanzas, buildObra, getTemplateById } from '../data/templates';
 import { generateProcessFromAI } from '../ai/ProcessGenerator';
 import { runCopilot } from '../ai/copilot';
@@ -60,6 +76,8 @@ interface ProcessState {
   selectedNodeId: string | null;
   isGenerating: boolean;
   chat: ChatMessage[];
+  leftPanelOpen: boolean;
+  rightPanelOpen: boolean;
   llmConfig: LLMConfig;
   integrations: Integration[];
   library: SavedProcess[];
@@ -85,9 +103,12 @@ interface ProcessState {
   patchNode: (id: string, patch: Partial<ProcessNodeData>) => void;
   moveNode: (id: string, position: XY) => void;
   addNode: (type: NodeType, laneId?: string) => void;
+  addConnectedNode: (sourceId: string, type: NodeType, edgeType?: EdgeType) => void;
+  seedSkeleton: () => void;
   deleteNode: (id: string) => void;
   addEdge: (edge: ProcessEdgeData) => void;
   deleteEdge: (id: string) => void;
+  togglePanel: (side: 'left' | 'right') => void;
   addLane: () => void;
   patchLane: (id: string, patch: Partial<Lane>) => void;
   toggleChecklist: (id: string) => void;
@@ -154,6 +175,8 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   process: initialProcess,
   selectedNodeId: null,
   isGenerating: false,
+  leftPanelOpen: true,
+  rightPanelOpen: true,
   llmConfig: storage.read<LLMConfig>('llm', emptyLLMConfig()),
   integrations: storage.read<Integration[]>('integrations', []),
   library: initialLibrary,
@@ -258,19 +281,70 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
 
   addNode: (type, laneId) =>
     set((st) => {
-      const lane = laneId ?? st.process.lanes[0]?.id;
-      if (!lane) return st;
+      let lanes = st.process.lanes;
+      if (lanes.length === 0) lanes = [makeLane({ name: 'Proceso', type: 'operations', color: '#1E5CE8' })];
+      const lane = laneId ?? lanes[0].id;
       const existing = st.process.nodes.filter((n) => n.laneId === lane);
-      const maxX = existing.length ? Math.max(...existing.map((n) => n.position.x)) : 0;
-      const laneIdx = st.process.lanes.findIndex((l) => l.id === lane);
+      const maxX = existing.length ? Math.max(...existing.map((n) => n.position.x)) : -152;
+      const laneIdx = lanes.findIndex((l) => l.id === lane);
       const node = makeNode({
         type,
-        title: `Nuevo ${type}`,
+        title: NODE_DEFAULT_TITLE[type] ?? `Nuevo ${type}`,
         laneId: lane,
         position: { x: maxX + 248, y: laneIdx * 168 + 46 },
       });
-      return { process: { ...st.process, nodes: [...st.process.nodes, node], updatedAt: nowIso() }, selectedNodeId: node.id };
+      return { process: { ...st.process, lanes, nodes: [...st.process.nodes, node], updatedAt: nowIso() }, selectedNodeId: node.id };
     }),
+
+  addConnectedNode: (sourceId, type, edgeType = 'sequence') =>
+    set((st) => {
+      const source = st.process.nodes.find((n) => n.id === sourceId);
+      if (!source) return st;
+      const baseX = source.position.x + 248;
+      let y = source.position.y + (edgeType === 'decision_no' ? 132 : edgeType === 'decision_yes' ? -8 : 0);
+      const occupied = (yy: number) =>
+        st.process.nodes.some((n) => Math.abs(n.position.x - baseX) < 130 && Math.abs(n.position.y - yy) < 76);
+      let guard = 0;
+      while (occupied(y) && guard < 10) {
+        y += 84;
+        guard++;
+      }
+      const node = makeNode({
+        type,
+        title: NODE_DEFAULT_TITLE[type] ?? 'Nuevo paso',
+        laneId: source.laneId,
+        position: { x: baseX, y },
+      });
+      const edge = makeEdge(sourceId, node.id, { type: edgeType });
+      return {
+        process: { ...st.process, nodes: [...st.process.nodes, node], edges: [...st.process.edges, edge], updatedAt: nowIso() },
+        selectedNodeId: node.id,
+      };
+    }),
+
+  seedSkeleton: () =>
+    set((st) => {
+      const lanes = st.process.lanes.length ? st.process.lanes : [makeLane({ name: 'Proceso', type: 'operations', color: '#1E5CE8' })];
+      const laneId = lanes[0].id;
+      const y = 64;
+      const start = makeNode({ type: 'start', title: 'Inicio', laneId, position: { x: 72, y } });
+      const act = makeNode({ type: 'activity', title: 'Primera actividad', laneId, responsible: '', position: { x: 320, y } });
+      const end = makeNode({ type: 'end', title: 'Fin', laneId, position: { x: 568, y } });
+      return {
+        process: {
+          ...st.process,
+          lanes,
+          nodes: [...st.process.nodes, start, act, end],
+          edges: [...st.process.edges, makeEdge(start.id, act.id), makeEdge(act.id, end.id)],
+          status: st.process.status ?? 'mapeado',
+          updatedAt: nowIso(),
+        },
+        selectedNodeId: act.id,
+      };
+    }),
+
+  togglePanel: (side) =>
+    set((st) => (side === 'left' ? { leftPanelOpen: !st.leftPanelOpen } : { rightPanelOpen: !st.rightPanelOpen })),
 
   deleteNode: (id) =>
     set((st) => ({

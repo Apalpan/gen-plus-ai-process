@@ -2,23 +2,29 @@ import { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background,
   BackgroundVariant,
+  ConnectionLineType,
   Controls,
   MiniMap,
   Panel,
   useEdgesState,
   useNodesState,
   type Connection,
+  type Edge,
   type Node,
   type NodeChange,
 } from 'reactflow';
-import { Activity, GitBranch, FileText, LayoutGrid, Zap } from 'lucide-react';
+import { Play, Activity, GitBranch, FileText, Flag, LayoutGrid, Sparkles } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { toFlowEdges, toFlowNodes } from '../../lib/processEngine';
 import { makeEdge, NODE_TYPE_META } from '../../lib/processSchema';
 import { ProcessNode } from './nodes/ProcessNode';
+import { DecisionNode } from './nodes/DecisionNode';
+import { TerminalNode } from './nodes/TerminalNode';
 import { LaneNode } from './nodes/LaneNode';
+import { GenEdge } from './edges/GenEdge';
 
-const nodeTypes = { process: ProcessNode, lane: LaneNode };
+const nodeTypes = { process: ProcessNode, decision: DecisionNode, terminal: TerminalNode, lane: LaneNode };
+const edgeTypes = { gen: GenEdge };
 
 function miniMapColor(node: Node): string {
   if (node.type === 'lane') return 'rgba(106,152,255,0.06)';
@@ -33,13 +39,17 @@ export function ProcessCanvas() {
   const selectNode = useProcessStore((s) => s.selectNode);
   const moveNode = useProcessStore((s) => s.moveNode);
   const addEdge = useProcessStore((s) => s.addEdge);
+  const deleteEdge = useProcessStore((s) => s.deleteEdge);
+  const deleteNode = useProcessStore((s) => s.deleteNode);
   const relayout = useProcessStore((s) => s.relayout);
   const addNode = useProcessStore((s) => s.addNode);
+  const seedSkeleton = useProcessStore((s) => s.seedSkeleton);
+  const setSection = useProcessStore((s) => s.setSection);
   const theme = useProcessStore((s) => s.theme);
 
   const rfNodes = useMemo(() => {
     return toFlowNodes(process).map((n) =>
-      n.type === 'process'
+      n.type !== 'lane'
         ? { ...n, data: { ...n.data, isSelected: n.id === selectedNodeId }, selected: n.id === selectedNodeId }
         : n,
     );
@@ -68,20 +78,41 @@ export function ProcessCanvas() {
   const onConnect = useCallback(
     (c: Connection) => {
       if (!c.source || !c.target) return;
-      addEdge(makeEdge(c.source, c.target, { type: 'sequence' }));
+      const type = c.sourceHandle === 'yes' ? 'decision_yes' : c.sourceHandle === 'no' ? 'decision_no' : 'sequence';
+      addEdge(makeEdge(c.source, c.target, { type }));
     },
     [addEdge],
+  );
+
+  const onEdgesDelete = useCallback((eds: Edge[]) => eds.forEach((e) => deleteEdge(e.id)), [deleteEdge]);
+  const onNodesDelete = useCallback(
+    (nds: Node[]) => nds.forEach((n) => !n.id.startsWith('lane-') && deleteNode(n.id)),
+    [deleteNode],
   );
 
   return (
     <div className="relative h-full w-full">
       {process.nodes.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-          <div className="gen-surface max-w-sm rounded-card-lg p-6 text-center shadow-elevated">
-            <p className="text-[14px] font-semibold">Tu canvas está vacío</p>
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <div className="gen-surface pointer-events-auto max-w-sm rounded-card-lg p-6 text-center shadow-elevated">
+            <p className="text-[15px] font-semibold">Empieza tu mapa</p>
             <p className="mt-1.5 text-[12.5px] leading-relaxed gen-text-muted">
-              No necesitas dibujar perfecto. Describe tu proceso en <b>Capturar</b> y generamos la lógica; luego edita aquí los nodos.
+              No necesitas dibujar perfecto. Genera la lógica desde una descripción, o crea el esqueleto y arrástralo.
             </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={() => setSection('capture')}
+                className="flex items-center justify-center gap-1.5 rounded-btn bg-brand-500 px-4 py-2.5 text-[13px] font-semibold text-oncolor transition-colors hover:bg-brand-400"
+              >
+                <Sparkles size={15} /> Generar con IA (Capturar)
+              </button>
+              <button
+                onClick={seedSkeleton}
+                className="flex items-center justify-center gap-1.5 rounded-btn border border-[var(--gen-border-strong)] px-4 py-2.5 text-[13px] font-semibold text-brand-100 transition-colors hover:bg-white/[0.06]"
+              >
+                <Play size={14} /> Crear Inicio → Actividad → Fin
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -89,17 +120,23 @@ export function ProcessCanvas() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onEdgesDelete={onEdgesDelete}
+        onNodesDelete={onNodesDelete}
         onNodeClick={(_, node) => !node.id.startsWith('lane-') && selectNode(node.id)}
         onPaneClick={() => selectNode(null)}
         fitView
-        fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
+        fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
         minZoom={0.2}
         maxZoom={1.8}
         proOptions={{ hideAttribution: true }}
-        defaultEdgeOptions={{ type: 'smoothstep' }}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineStyle={{ stroke: '#4D84FF', strokeWidth: 2.5 }}
+        deleteKeyCode={['Backspace', 'Delete']}
+        zoomOnDoubleClick={false}
         className="bg-ink-900"
       >
         <Background
@@ -118,14 +155,23 @@ export function ProcessCanvas() {
 
         <Panel position="top-left" className="!m-3">
           <div className="flex items-center gap-1 rounded-btn-lg border border-[var(--gen-border)] bg-ink-850/90 p-1 shadow-elevated backdrop-blur">
+            <ToolBtn label="Inicio" onClick={() => addNode('start')} icon={<Play size={15} />} />
             <ToolBtn label="Actividad" onClick={() => addNode('activity')} icon={<Activity size={15} />} />
             <ToolBtn label="Decisión" onClick={() => addNode('decision')} icon={<GitBranch size={15} />} />
             <ToolBtn label="Documento" onClick={() => addNode('document')} icon={<FileText size={15} />} />
-            <ToolBtn label="Automatización" onClick={() => addNode('automation')} icon={<Zap size={15} />} />
+            <ToolBtn label="Fin" onClick={() => addNode('end')} icon={<Flag size={15} />} />
             <div className="mx-0.5 h-5 w-px bg-[var(--gen-border)]" />
-            <ToolBtn label="Reorganizar" onClick={relayout} icon={<LayoutGrid size={15} />} />
+            <ToolBtn label="Ordenar" onClick={relayout} icon={<LayoutGrid size={15} />} />
           </div>
         </Panel>
+
+        {process.nodes.length > 0 && (
+          <Panel position="bottom-center" className="!mb-2">
+            <div className="rounded-full border border-[var(--gen-border)] bg-ink-850/85 px-3 py-1 text-[11px] gen-text-muted shadow-elevated backdrop-blur">
+              Pasa el cursor sobre un nodo y pulsa <b className="text-brand-300">+</b> para añadir el siguiente paso · doble clic para renombrar · arrastra los puntos para conectar
+            </div>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );

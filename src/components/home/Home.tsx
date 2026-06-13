@@ -116,10 +116,10 @@ export function Home() {
             className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
           >
             <Button size="lg" onClick={start} leftIcon={<Sparkles size={18} />} rightIcon={<ArrowRight size={18} />}>
-              Crear proceso con IA
+              Mapear mi proceso
             </Button>
-            <Button size="lg" variant="secondary" onClick={() => loadTemplate('tpl_obra_example')} leftIcon={<Play size={17} />}>
-              Ver ejemplo
+            <Button size="lg" variant="secondary" onClick={() => loadTemplate('tpl_coordinacion')} leftIcon={<Play size={17} />}>
+              Ver un caso de ejemplo
             </Button>
           </motion.div>
         </div>
