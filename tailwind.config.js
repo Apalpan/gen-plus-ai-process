@@ -79,11 +79,20 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'dash-flow': {
+          to: { 'stroke-dashoffset': '-20' },
+        },
+        'node-pulse': {
+          '0%, 100%': { opacity: '0.55', transform: 'scale(1)' },
+          '50%': { opacity: '1', transform: 'scale(1.18)' },
+        },
       },
       animation: {
         'pulse-line': 'pulse-line 3s ease-in-out infinite',
         float: 'float 6s ease-in-out infinite',
         'fade-up': 'fade-up 360ms cubic-bezier(.4,0,.2,1) both',
+        'dash-flow': 'dash-flow 0.9s linear infinite',
+        'node-pulse': 'node-pulse 2.4s ease-in-out infinite',
       },
     },
   },

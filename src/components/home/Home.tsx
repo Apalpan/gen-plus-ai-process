@@ -1,44 +1,99 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Workflow, Gauge, PenLine, Rocket, ArrowRight, Play, Github } from 'lucide-react';
+import { Sparkles, Workflow, Gauge, PenLine, Rocket, ShieldCheck, ArrowRight, Play } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { Logo } from '../brand/Logo';
 import { Button } from '../ui/Button';
 
-const VALUES: { icon: LucideIcon; title: string; desc: string }[] = [
-  { icon: PenLine, title: '1 · Capturar', desc: 'Describe el proceso como en una reunión.' },
-  { icon: Workflow, title: '2 · Mapear', desc: 'Mapa visual con áreas, roles y decisiones.' },
-  { icon: Gauge, title: '3 · Medir', desc: 'Métricas, riesgos y Health Score.' },
-  { icon: Sparkles, title: '4 · AI First', desc: 'Rediseño con agentes y automatizaciones.' },
-  { icon: Rocket, title: '5 · Implementar', desc: 'Ficha, roadmap y prompts listos.' },
+const STEPS: { icon: LucideIcon; label: string }[] = [
+  { icon: PenLine, label: 'Capturar' },
+  { icon: Workflow, label: 'Mapear' },
+  { icon: ShieldCheck, label: 'Validar' },
+  { icon: Gauge, label: 'Medir' },
+  { icon: Sparkles, label: 'AI First' },
+  { icon: Rocket, label: 'Implementar' },
 ];
 
-function HeroDecoration() {
+/* ---------- Diagrama de proceso animado (pieza central) ---------- */
+function NodeRect({ x, y, w, h, color, label }: { x: number; y: number; w: number; h: number; color: string; label: string }) {
   return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={9} fill="#0a2148" stroke={`${color}66`} strokeWidth={1.2} />
+      <rect x={x} y={y} width={w} height={3.5} rx={2} fill={color} />
+      <text x={x + w / 2} y={y + h / 2 + 4} textAnchor="middle" fontSize="10.5" fontWeight={600} fill="#E9F0FF">
+        {label}
+      </text>
+    </g>
+  );
+}
+function Pill({ x, y, w, h, color, label }: { x: number; y: number; w: number; h: number; color: string; label: string }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={h / 2} fill={color} />
+      <text x={x + w / 2} y={y + h / 2 + 3.5} textAnchor="middle" fontSize="10" fontWeight={700} fill="#fff">
+        {label}
+      </text>
+    </g>
+  );
+}
+const flow = 'animate-dash-flow';
+
+function ProcessDiagram() {
+  return (
+    <svg viewBox="0 0 480 270" className="h-auto w-full" aria-hidden>
       <defs>
-        <linearGradient id="line" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2165FF" stopOpacity="0.0" />
-          <stop offset="50%" stopColor="#4D84FF" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#2165FF" stopOpacity="0.0" />
-        </linearGradient>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#6A98FF" />
+        </marker>
+        <marker id="ahg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#34D399" />
+        </marker>
       </defs>
-      {[
-        'M 5,30 C 25,10 45,50 70,30',
-        'M 10,60 C 35,80 60,40 90,65',
-        'M 0,85 C 30,70 55,95 95,80',
-      ].map((d, i) => (
-        <path
-          key={i}
-          d={d.replace(/(\d+),(\d+)/g, (_, x, y) => `${(+x / 100) * 1400},${(+y / 100) * 800}`)}
-          fill="none"
-          stroke="url(#line)"
-          strokeWidth={1.5}
-          className="animate-pulse-line"
-          style={{ animationDelay: `${i * 0.8}s` }}
-        />
-      ))}
+
+      {/* connectors */}
+      <path d="M92,82 H110" stroke="#6A98FF" strokeWidth={2} strokeDasharray="5 5" className={flow} markerEnd="url(#ah)" fill="none" />
+      <path d="M204,82 H222" stroke="#6A98FF" strokeWidth={2} strokeDasharray="5 5" className={flow} markerEnd="url(#ah)" fill="none" />
+      <path d="M316,82 H344" stroke="#6A98FF" strokeWidth={2} strokeDasharray="5 5" className={flow} markerEnd="url(#ah)" fill="none" />
+      {/* Sí → down to Medir */}
+      <path d="M372,112 V150 H314" stroke="#34D399" strokeWidth={2} strokeDasharray="5 5" className={flow} markerEnd="url(#ahg)" fill="none" />
+      {/* No → feedback to Mapear (dashed, faint) */}
+      <path d="M372,52 V34 H268 V58" stroke="#F87171" strokeWidth={1.6} strokeDasharray="3 5" className={flow} fill="none" opacity={0.75} />
+      {/* Medir → Implementar → Fin */}
+      <path d="M222,174 H204" stroke="#6A98FF" strokeWidth={2} strokeDasharray="5 5" className={flow} markerEnd="url(#ah)" fill="none" />
+      <path d="M110,174 H92" stroke="#6A98FF" strokeWidth={2} strokeDasharray="5 5" className={flow} markerEnd="url(#ah)" fill="none" />
+
+      {/* labels Sí/No */}
+      <text x={384} y={132} fontSize="9" fontWeight={700} fill="#34D399">Sí</text>
+      <text x={384} y={46} fontSize="9" fontWeight={700} fill="#F87171">No</text>
+
+      {/* nodes — fila superior */}
+      <Pill x={16} y={64} w={76} h={36} color="#16a34a" label="Inicio" />
+      <NodeRect x={110} y={58} w={94} h={48} color="#4D84FF" label="Capturar" />
+      <NodeRect x={222} y={58} w={94} h={48} color="#2165FF" label="Mapear" />
+      {/* diamond decisión */}
+      <g>
+        <rect x={344} y={54} width={56} height={56} rx={10} transform="rotate(45 372 82)" fill="#0a2148" stroke="#F5A62399" strokeWidth={1.2} />
+        <text x={372} y={86} textAnchor="middle" fontSize="9.5" fontWeight={600} fill="#F5A623">¿OK?</text>
+      </g>
+      {/* fila inferior */}
+      <NodeRect x={222} y={150} w={94} h={48} color="#22D3EE" label="Medir" />
+      <NodeRect x={110} y={150} w={94} h={48} color="#8B5CF6" label="Optimizar" />
+      <Pill x={16} y={156} w={76} h={36} color="#1E5CE8" label="Listo" />
+
+      {/* puntos de flujo pulsantes */}
+      <circle cx={156} cy={82} r={3} fill="#6A98FF" className="animate-node-pulse" />
+      <circle cx={268} cy={174} r={3} fill="#22D3EE" className="animate-node-pulse" style={{ animationDelay: '1.1s' }} />
     </svg>
+  );
+}
+
+function StatChip({ label, value, tone, className, delay }: { label: string; value: string; tone: string; className?: string; delay?: string }) {
+  return (
+    <div className={`absolute flex animate-float items-center gap-2 rounded-btn border border-white/10 bg-ink-800/90 px-2.5 py-1.5 shadow-elevated backdrop-blur ${className}`} style={{ animationDelay: delay }}>
+      <span className="h-2 w-2 rounded-full" style={{ background: tone }} />
+      <span className="text-[10.5px] font-medium gen-text-muted">{label}</span>
+      <span className="text-[12px] font-bold" style={{ color: tone }}>{value}</span>
+    </div>
   );
 }
 
@@ -54,98 +109,127 @@ export function Home() {
 
   return (
     <div className="dark relative min-h-screen w-screen overflow-y-auto bg-ink-900 text-white">
-      {/* background */}
+      {/* fondo */}
       <div className="pointer-events-none absolute inset-0 bg-gen-hero opacity-90" />
-      <div className="pointer-events-none absolute inset-0 bg-grid-dots [background-size:26px_26px] opacity-[0.5]" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-ink-900/30 via-ink-900/60 to-ink-900" />
-      <HeroDecoration />
+      <div className="pointer-events-none absolute inset-0 bg-grid-dots [background-size:24px_24px] opacity-40" />
+      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_72%_30%,rgba(77,132,255,0.22),transparent_45%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-ink-900/20 via-ink-900/55 to-ink-900" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-6">
-        <header className="flex items-center justify-between">
+      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6">
+        <header className="flex items-center justify-between py-5">
           <Logo />
-          <div className="flex items-center gap-2">
-            <a href="https://github.com" target="_blank" rel="noreferrer">
-              <Button variant="ghost" size="sm" leftIcon={<Github size={16} />}>
-                <span className="hidden sm:inline">GitHub</span>
-              </Button>
-            </a>
-            <Button variant="secondary" size="sm" onClick={() => { loadTemplate('tpl_obra_example'); }}>
-              Ver ejemplo
-            </Button>
-          </div>
+          <Button variant="secondary" size="sm" onClick={() => loadTemplate('tpl_rfi')} leftIcon={<Play size={15} />}>
+            Ver un caso
+          </Button>
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+        {/* hero 2 columnas */}
+        <main className="grid flex-1 items-center gap-12 py-8 lg:grid-cols-[1.05fr_1fr]">
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-400/25 bg-brand-500/10 px-3 py-1.5 text-[12px] font-semibold text-brand-200"
+            >
+              <span className="h-1.5 w-1.5 animate-node-pulse rounded-full bg-brand-400" />
+              Mapea · Mide · Opera con IA
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.05 }}
+              className="font-display text-[40px] font-bold leading-[1.05] tracking-tight sm:text-[52px]"
+            >
+              Mapea cómo trabajas,
+              <br />
+              <span className="bg-gradient-to-r from-brand-300 via-brand-200 to-white bg-clip-text text-transparent">opéralo con IA.</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.12 }}
+              className="mt-5 max-w-lg text-[15px] leading-relaxed text-[var(--gen-text-secondary)]"
+            >
+              De una idea en lenguaje natural a un proceso claro, medible y listo para agentes y automatizaciones.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.18 }}
+              className="mt-8 flex flex-col gap-3 sm:flex-row"
+            >
+              <Button size="lg" onClick={start} leftIcon={<Sparkles size={18} />} rightIcon={<ArrowRight size={18} />}>
+                Mapear mi proceso
+              </Button>
+              <Button size="lg" variant="secondary" onClick={() => loadTemplate('tpl_coordinacion')}>
+                Probar un ejemplo
+              </Button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-6 flex flex-wrap gap-x-5 gap-y-1.5 text-[11.5px] gen-text-muted"
+            >
+              <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-accent-green" /> Sin tarjeta</span>
+              <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-brand-300" /> 2D · 3D · Básico</span>
+              <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-accent-violet" /> Exporta a Markdown, JSON, n8n</span>
+            </motion.div>
+          </div>
+
+          {/* diagrama */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3.5 py-1.5 text-[12.5px] font-medium text-brand-200"
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="relative"
           >
-            <Sparkles size={14} className="text-brand-400" />
-            Mapea tu proceso · Mídelo · Rediséñalo con IA · Impleméntalo
+            <div className="gen-glow-ring rounded-card-lg border border-white/10 bg-ink-850/60 p-5 backdrop-blur">
+              <div className="mb-3 flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-accent-red/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-accent-amber/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-accent-green/70" />
+                <span className="ml-2 text-[10.5px] font-medium gen-text-muted">Proceso · vista 2D</span>
+              </div>
+              <ProcessDiagram />
+            </div>
+            <StatChip label="Salud" value="92" tone="#34D399" className="-right-3 -top-3" delay="0s" />
+            <StatChip label="AI First" value="78" tone="#4D84FF" className="-left-3 top-1/3" delay="0.8s" />
+            <StatChip label="Ahorro" value="−120 h/mes" tone="#8B5CF6" className="-bottom-3 right-6" delay="1.4s" />
           </motion.div>
+        </main>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.05 }}
-            className="font-display text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl"
-          >
-            Mapea cómo coordina tu equipo,
-            <br />
-            <span className="bg-gradient-to-r from-brand-300 via-brand-200 to-white bg-clip-text text-transparent">
-              desde una idea simple.
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.12 }}
-            className="mt-5 max-w-2xl text-[15px] leading-relaxed text-[var(--gen-text-secondary)] sm:text-base"
-          >
-            Dime cómo trabajas hoy: convierte reuniones y dolores operativos en procesos claros y medibles, y descubre
-            cómo deberías trabajar mañana con agentes IA y automatizaciones.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.18 }}
-            className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
-          >
-            <Button size="lg" onClick={start} leftIcon={<Sparkles size={18} />} rightIcon={<ArrowRight size={18} />}>
-              Mapear mi proceso
-            </Button>
-            <Button size="lg" variant="secondary" onClick={() => loadTemplate('tpl_coordinacion')} leftIcon={<Play size={17} />}>
-              Ver un caso de ejemplo
-            </Button>
-          </motion.div>
-        </div>
-
-        <motion.div
+        {/* tubería de 6 pasos */}
+        <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.24 }}
-          className="grid grid-cols-2 gap-3 pb-8 sm:grid-cols-3 lg:grid-cols-5"
+          transition={{ duration: 0.6, delay: 0.32 }}
+          className="border-t border-white/[0.06] py-8"
         >
-          {VALUES.map((v) => {
-            const Icon = v.icon;
-            return (
-              <div
-                key={v.title}
-                className="gen-surface rounded-card p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-brand-400/45 hover:shadow-glow"
-              >
-                <span className="mb-2.5 inline-flex h-9 w-9 items-center justify-center rounded-btn bg-brand-500/15 text-brand-300">
-                  <Icon size={18} />
-                </span>
-                <h3 className="text-[13.5px] font-semibold">{v.title}</h3>
-                <p className="mt-1 text-[11.5px] leading-snug gen-text-muted">{v.desc}</p>
-              </div>
-            );
-          })}
-        </motion.div>
+          <p className="mb-5 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-brand-300">El flujo, en 6 pasos</p>
+          <div className="relative mx-auto max-w-3xl">
+            <div className="absolute left-6 right-6 top-5 hidden h-px bg-gradient-to-r from-transparent via-brand-400/40 to-transparent lg:block" />
+            <div className="grid grid-cols-3 gap-x-2 gap-y-6 lg:grid-cols-6">
+              {STEPS.map((s, i) => {
+                const Icon = s.icon;
+                return (
+                  <div key={s.label} className="group flex flex-col items-center text-center">
+                    <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full border border-brand-400/35 bg-ink-800 text-brand-300 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-brand-400/70 group-hover:text-brand-200">
+                      <Icon size={17} />
+                      <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[9px] font-bold text-oncolor">{i + 1}</span>
+                    </div>
+                    <span className="mt-2 text-[12px] font-semibold">{s.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </motion.section>
       </div>
     </div>
   );
