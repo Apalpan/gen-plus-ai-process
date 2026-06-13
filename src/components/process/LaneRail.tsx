@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useViewport, useReactFlow } from 'reactflow';
-import { Crosshair, GripVertical } from 'lucide-react';
+import { Crosshair } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { LANE_HEIGHT, laneWidth } from '../../lib/processEngine';
 import { LANE_COLORS } from '../../lib/processSchema';
@@ -53,69 +53,63 @@ export function LaneRail() {
         return (
           <div
             key={lane.id}
-            className={cn('pointer-events-auto absolute left-2.5 transition-opacity', dim && 'opacity-45')}
-            style={{ top: top + 8 }}
+            onClick={() => setHighlightLane(lane.id)}
+            className={cn(
+              'pointer-events-auto group/lane absolute left-3 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-all duration-150',
+              dim && 'opacity-45',
+            )}
+            style={{ top: top + 6, background: active ? `${lane.color}1f` : 'transparent', boxShadow: active ? `inset 3px 0 0 ${lane.color}` : undefined }}
           >
-            <div
-              onClick={() => setHighlightLane(lane.id)}
-              className={cn(
-                'flex items-center gap-2 rounded-btn border px-2.5 py-1.5 shadow-elevated backdrop-blur transition-all duration-150 cursor-pointer',
-                active ? 'bg-ink-800' : 'bg-ink-850/92 hover:bg-ink-800',
-              )}
-              style={{ borderColor: active ? lane.color : `${lane.color}40`, boxShadow: active ? `0 0 0 1px ${lane.color}, 0 12px 28px rgba(0,0,0,0.3)` : undefined }}
-            >
-              <GripVertical size={13} className="text-[var(--gen-text-muted)]" />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  cycleColor(lane.id, lane.color);
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                cycleColor(lane.id, lane.color);
+              }}
+              title="Cambiar color"
+              className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white/10 transition-transform hover:scale-125"
+              style={{ background: lane.color }}
+            />
+            {editing === lane.id ? (
+              <input
+                ref={inputRef}
+                value={draft}
+                autoFocus
+                onChange={(e) => setDraft(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onBlur={() => commit(lane.id, lane.name)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                  if (e.key === 'Escape') setEditing(null);
                 }}
-                title="Cambiar color"
-                className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white/10 transition-transform hover:scale-125"
-                style={{ background: lane.color }}
+                className="w-40 rounded border border-brand-400/60 bg-ink-900/85 px-1.5 py-0.5 text-[14px] font-extrabold uppercase tracking-wide outline-none"
+                style={{ color: lane.color }}
               />
-              {editing === lane.id ? (
-                <input
-                  ref={inputRef}
-                  value={draft}
-                  autoFocus
-                  onChange={(e) => setDraft(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={() => commit(lane.id, lane.name)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.currentTarget.blur();
-                    if (e.key === 'Escape') setEditing(null);
-                  }}
-                  className="w-36 rounded border border-brand-400/60 bg-ink-900/80 px-1.5 py-0.5 text-[12.5px] font-bold uppercase tracking-wider text-white outline-none"
-                  style={{ color: lane.color }}
-                />
-              ) : (
-                <span
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    setDraft(lane.name);
-                    setEditing(lane.id);
-                  }}
-                  title="Doble clic para renombrar"
-                  className="max-w-[220px] truncate text-[13px] font-bold uppercase tracking-wider"
-                  style={{ color: lane.color }}
-                >
-                  {lane.name}
-                </span>
-              )}
-              {lane.ownerRole && <span className="hidden rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] gen-text-muted sm:inline">{lane.ownerRole}</span>}
-              <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold gen-text-muted">{count}</span>
-              <button
-                onClick={(e) => {
+            ) : (
+              <span
+                onDoubleClick={(e) => {
                   e.stopPropagation();
-                  focusLane(lane.id, i);
+                  setDraft(lane.name);
+                  setEditing(lane.id);
                 }}
-                title="Enfocar carril"
-                className="flex h-5 w-5 items-center justify-center rounded text-[var(--gen-text-muted)] transition-colors hover:bg-white/[0.1] hover:text-brand-200"
+                title="Doble clic para renombrar"
+                className="max-w-[260px] truncate text-[14px] font-extrabold uppercase tracking-wide [text-shadow:0_1px_3px_rgba(0,0,0,0.35)]"
+                style={{ color: lane.color }}
               >
-                <Crosshair size={12} />
-              </button>
-            </div>
+                {lane.name}
+              </span>
+            )}
+            {lane.ownerRole && <span className="hidden text-[11px] font-medium gen-text-muted md:inline">· {lane.ownerRole}</span>}
+            <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px] font-bold gen-text-muted">{count}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                focusLane(lane.id, i);
+              }}
+              title="Enfocar carril"
+              className="flex h-5 w-5 items-center justify-center rounded text-[var(--gen-text-muted)] opacity-0 transition-all hover:bg-white/[0.1] hover:text-brand-200 group-hover/lane:opacity-100"
+            >
+              <Crosshair size={12} />
+            </button>
           </div>
         );
       })}

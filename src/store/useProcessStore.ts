@@ -73,6 +73,7 @@ interface ProcessState {
   view: View;
   section: Section;
   theme: 'dark' | 'light';
+  user: string | null;
   process: ProcessMap;
   selectedNodeId: string | null;
   isGenerating: boolean;
@@ -114,6 +115,9 @@ interface ProcessState {
   togglePanel: (side: 'left' | 'right') => void;
   setViewMode: (m: 'basic' | '2d' | '3d') => void;
   setHighlightLane: (laneId: string | null) => void;
+  setNodesPositions: (updates: { id: string; position: XY }[]) => void;
+  login: (user: string) => void;
+  logout: () => void;
   addLane: () => void;
   patchLane: (id: string, patch: Partial<Lane>) => void;
   toggleChecklist: (id: string) => void;
@@ -178,6 +182,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   view: 'home',
   section: 'dashboard',
   theme: initialTheme,
+  user: storage.read<string | null>('user', null),
   process: initialProcess,
   selectedNodeId: null,
   isGenerating: false,
@@ -280,12 +285,39 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
     })),
 
   moveNode: (id, position) =>
-    set((st) => ({
-      process: {
-        ...st.process,
-        nodes: st.process.nodes.map((n) => (n.id === id ? { ...n, position } : n)),
-      },
-    })),
+    set((st) => {
+      // El nodo se queda donde lo sueltas; su carril sigue a la banda (por Y).
+      const lanes = st.process.lanes;
+      const idx = Math.max(0, Math.min(lanes.length - 1, Math.round((position.y - 46) / 168)));
+      const laneId = lanes[idx]?.id;
+      return {
+        process: {
+          ...st.process,
+          nodes: st.process.nodes.map((n) => (n.id === id ? { ...n, position, laneId: laneId ?? n.laneId } : n)),
+        },
+      };
+    }),
+
+  setNodesPositions: (updates) =>
+    set((st) => {
+      const map = new Map(updates.map((u) => [u.id, u.position]));
+      return {
+        process: {
+          ...st.process,
+          nodes: st.process.nodes.map((n) => (map.has(n.id) ? { ...n, position: map.get(n.id)! } : n)),
+          updatedAt: nowIso(),
+        },
+      };
+    }),
+
+  login: (user) => {
+    storage.write('user', user);
+    set({ user });
+  },
+  logout: () => {
+    storage.remove('user');
+    set({ user: null, view: 'home' });
+  },
 
   addNode: (type, laneId) =>
     set((st) => {
@@ -358,7 +390,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   togglePanel: (side) =>
     set((st) => (side === 'left' ? { leftPanelOpen: !st.leftPanelOpen } : { rightPanelOpen: !st.rightPanelOpen })),
 
-  setViewMode: (m) => set({ viewMode: m }),
+  setViewMode: (m) => set({ viewMode: m, highlightLaneId: null }),
   setHighlightLane: (laneId) => set((st) => ({ highlightLaneId: st.highlightLaneId === laneId ? null : laneId })),
 
   deleteNode: (id) =>

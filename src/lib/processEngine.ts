@@ -114,13 +114,33 @@ export function toFlowNodes(process: ProcessMap): Node[] {
 
   const processNodes: Node[] = process.nodes.map((n) => ({
     id: n.id,
-    type: n.type === 'decision' ? 'decision' : n.type === 'start' || n.type === 'end' ? 'terminal' : 'process',
+    type:
+      n.type === 'decision'
+        ? 'decision'
+        : n.type === 'start' || n.type === 'end'
+        ? 'terminal'
+        : n.type === 'document' || n.type === 'evidence'
+        ? 'doc'
+        : 'process',
     position: n.position,
     data: { node: n, process },
     zIndex: 2,
   }));
 
   return [...laneNodes, ...processNodes];
+}
+
+/** Modo Básico: todo el flujo en una sola línea, sin swimlanes. */
+export function linearLayout(process: ProcessMap): Record<string, { x: number; y: number }> {
+  const columns = computeColumns(process);
+  const ordered = [...process.nodes].sort(
+    (a, b) => (columns[a.id] ?? 0) - (columns[b.id] ?? 0) || a.position.x - b.position.x,
+  );
+  const pos: Record<string, { x: number; y: number }> = {};
+  ordered.forEach((n, i) => {
+    pos[n.id] = { x: i * 240, y: 90 };
+  });
+  return pos;
 }
 
 export function toFlowEdges(process: ProcessMap): Edge[] {

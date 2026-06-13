@@ -42,10 +42,9 @@ const ICONS: Partial<Record<NodeType, LucideIcon>> = {
 interface ProcessNodeFlowData {
   node: ProcessNodeData;
   process: ProcessMap;
-  isSelected?: boolean;
 }
 
-function ProcessNodeImpl({ data }: NodeProps<ProcessNodeFlowData>) {
+function ProcessNodeImpl({ data, selected }: NodeProps<ProcessNodeFlowData>) {
   const n = data.node;
   const meta = NODE_TYPE_META[n.type];
   const Icon = ICONS[n.type] ?? Activity;
@@ -60,10 +59,10 @@ function ProcessNodeImpl({ data }: NodeProps<ProcessNodeFlowData>) {
       className={cn(
         'group relative w-[200px] select-none rounded-card border bg-ink-700/80 backdrop-blur-sm transition-all duration-150 ease-out',
         'hover:-translate-y-0.5 hover:shadow-glow',
-        data.isSelected ? 'shadow-focus' : 'shadow-[0_10px_28px_rgba(0,0,0,0.32)]',
+        selected ? 'shadow-focus' : 'shadow-[0_10px_28px_rgba(0,0,0,0.32)]',
       )}
       style={{
-        borderColor: data.isSelected ? '#4D84FF' : meta.ring,
+        borderColor: selected ? '#4D84FF' : meta.ring,
         background: `linear-gradient(180deg, ${meta.tint} 0%, var(--node-base) 64%)`,
       }}
     >

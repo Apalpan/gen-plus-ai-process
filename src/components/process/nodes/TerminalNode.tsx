@@ -11,10 +11,9 @@ import { cn } from '../../../lib/cn';
 interface Data {
   node: ProcessNodeData;
   process: ProcessMap;
-  isSelected?: boolean;
 }
 
-function TerminalNodeImpl({ data }: NodeProps<Data>) {
+function TerminalNodeImpl({ data, selected }: NodeProps<Data>) {
   const n = data.node;
   const deleteNode = useProcessStore((s) => s.deleteNode);
   const isStart = n.type === 'start';
@@ -29,9 +28,9 @@ function TerminalNodeImpl({ data }: NodeProps<Data>) {
       <div
         className={cn(
           'flex h-[44px] items-center gap-2 rounded-full px-4 font-bold text-oncolor shadow-[0_8px_20px_rgba(0,0,0,0.28)] transition-all duration-150 group-hover:-translate-y-0.5',
-          data.isSelected && 'ring-2 ring-offset-2 ring-offset-transparent',
+          selected && 'ring-2 ring-offset-2 ring-offset-transparent',
         )}
-        style={{ background: `linear-gradient(180deg, ${color} 0%, ${color}cc 100%)`, boxShadow: data.isSelected ? `0 0 0 3px ${color}66` : undefined }}
+        style={{ background: `linear-gradient(180deg, ${color} 0%, ${color}cc 100%)`, boxShadow: selected ? `0 0 0 3px ${color}66` : undefined }}
       >
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
           <Icon size={13} fill="currentColor" />

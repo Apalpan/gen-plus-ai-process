@@ -11,12 +11,11 @@ import { cn } from '../../../lib/cn';
 interface Data {
   node: ProcessNodeData;
   process: ProcessMap;
-  isSelected?: boolean;
 }
 
 const AMBER = '#F5A623';
 
-function DecisionNodeImpl({ data }: NodeProps<Data>) {
+function DecisionNodeImpl({ data, selected }: NodeProps<Data>) {
   const n = data.node;
   const deleteNode = useProcessStore((s) => s.deleteNode);
 
@@ -32,9 +31,9 @@ function DecisionNodeImpl({ data }: NodeProps<Data>) {
         style={{
           width: 118,
           height: 118,
-          borderColor: data.isSelected ? '#4D84FF' : `${AMBER}aa`,
+          borderColor: selected ? '#4D84FF' : `${AMBER}aa`,
           background: `linear-gradient(135deg, ${AMBER}26 0%, var(--node-base) 70%)`,
-          boxShadow: data.isSelected ? '0 0 0 3px rgba(77,132,255,0.4)' : '0 10px 24px rgba(0,0,0,0.28)',
+          boxShadow: selected ? '0 0 0 3px rgba(77,132,255,0.4)' : '0 10px 24px rgba(0,0,0,0.28)',
         }}
       />
 

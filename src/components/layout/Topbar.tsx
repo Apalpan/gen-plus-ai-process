@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, Save, Sun, Moon, Star, Check } from 'lucide-react';
+import { Download, Save, Sun, Moon, Star, Check, LogOut } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { Logo } from '../brand/Logo';
 import { Button } from '../ui/Button';
@@ -11,6 +11,8 @@ export function Topbar() {
   const toggleTheme = useProcessStore((s) => s.toggleTheme);
   const setSection = useProcessStore((s) => s.setSection);
   const saveToLibrary = useProcessStore((s) => s.saveToLibrary);
+  const user = useProcessStore((s) => s.user);
+  const logout = useProcessStore((s) => s.logout);
   const [saved, setSaved] = useState(false);
 
   const save = () => {
@@ -45,6 +47,17 @@ export function Topbar() {
       <Button variant="primary" size="sm" onClick={() => setSection('implement')} leftIcon={<Download size={16} />}>
         <span className="hidden sm:inline">Exportar</span>
       </Button>
+      <div className="mx-0.5 h-6 w-px bg-[var(--gen-border)]" />
+      <div className="flex items-center gap-1.5">
+        {user && (
+          <span className="hidden h-7 w-7 items-center justify-center rounded-full bg-brand-500/20 text-[12px] font-bold text-brand-200 sm:flex" title={user}>
+            {user.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <Button variant="ghost" size="icon" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
+          <LogOut size={17} />
+        </Button>
+      </div>
     </header>
   );
 }
