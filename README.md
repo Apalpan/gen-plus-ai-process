@@ -6,15 +6,20 @@
 
 > **Mapea tu proceso. Mide su desempeño. Rediséñalo con IA. Impleméntalo con agentes y automatizaciones.**
 
-## 🧭 Flujo guiado de 5 pasos
+Mezcla **PPI / Operations Science** (flujo, WIP, cycle time, throughput, cuello de botella), **VDC** (cliente → proyecto → producción → factores controlables), **Lean/Last Planner**, **Scrum** (mejora iterativa) y **AI First** (agentes + automatizaciones).
+
+## 🧭 Flujo guiado de 6 pasos
 
 1. **Capturar** — describe el proceso en lenguaje natural (área, problema, resultado esperado).
-2. **Mapear** — mapa visual editable con swimlanes, responsables y decisiones; edítalo con el copilot.
-3. **Medir** — métricas conectadas al flujo, riesgos y **Process Health Score**.
-4. **AI First** — comparación proceso actual vs futuro, **AI First Score**, agentes IA y automatizaciones recomendadas, roadmap 30/60/90 y quick wins.
-5. **Implementar** — ficha de implementación con exportaciones: Markdown ejecutivo/técnico, JSON, Mermaid, PNG y prompts para Claude Code, n8n, Notion/Obsidian y dashboards.
+2. **Mapear** — mapa visual editable con swimlanes, responsables, decisiones (rombo + Sí/No), colas/WIP; edítalo con el copilot.
+3. **Validar** — reglas pedagógicas AEC/Lean (inicio/fin, responsable por rol, decisión = pregunta con dos caminos, actividad = verbo + objeto, evidencia, métricas) con "ir al nodo" y corrección.
+4. **Medir** — Métricas + **Producción (PPI)** (cycle time, throughput, WIP, eficiencia de flujo, cuello de botella, 5 palancas) + Riesgos + **Process Health Score**.
+5. **AI First** — proceso actual vs futuro, **AI First Score**, agentes IA y automatizaciones recomendadas, roadmap 30/60/90 y quick wins.
+6. **Implementar** — ficha de implementación con exportaciones: Markdown ejecutivo/técnico (incluye capa de producción), JSON, Mermaid, PNG y prompts para Claude Code, n8n, Notion/Obsidian y dashboards.
 
 Navegación en 6 módulos: **Dashboard · Procesos · Nuevo mapa · Métricas · AI First · Exportar** (+ Configuración).
+
+**Scores:** Health Score · AI First Score · **Production Science Score** (PPI) · **Cobertura VDC**.
 
 - 🎨 **Tema claro por defecto** (toggle a oscuro), identidad premium **GEN+**.
 - 🤖 **IA multi-proveedor configurable**: conecta tu API key (Claude / OpenAI / Gemini / compatible) y MCPs/integraciones. Sin key, motor heurístico local.
@@ -47,17 +52,24 @@ Escribe una idea desordenada, por ejemplo:
 - **AI First** — motor que clasifica cada actividad (humano decide / agente IA / automatizar / simplificar / eliminar), calcula **AI First Score** (0–100 con bandas), recomienda agentes y automatizaciones, y genera roadmap 30/60/90, quick wins y riesgos ocultos.
 - **Implementar** — ficha ejecutiva + exportaciones (Markdown, JSON, Mermaid, PNG, prompts Claude Code / n8n / Notion-Obsidian / dashboard) y cambio de estado del proceso.
 - **Configuración de IA** — proveedor + API key + modelo (Claude por defecto), prueba de conexión, MCPs/integraciones inyectadas en los prompts.
-- **8 plantillas** precargadas + datos demo al primer uso.
+- **Capa de Producción (PPI / Operations Science)**: nodos Cola/WIP y Buffer, campos touch/wait time, capacidad, WIP y variabilidad por nodo; cálculo de cycle time, throughput (Little's Law TH=WIP/CT), eficiencia de flujo, cuello de botella y 5 palancas.
+- **Validar (reglas AEC/Lean)**: la app revisa la calidad del flujo y enseña a corregirlo (rol no nombre, decisión como pregunta, verbo + objeto, evidencia, métrica con fórmula).
+- **Cobertura VDC**: conecta objetivos cliente → proyecto → producción → factores controlables, ICE/BIM/PPM.
+- **12 plantillas** precargadas (incl. AEC: RFI, Clash detection, Sesión ICE, Lookahead/Last Planner) + datos demo al primer uso.
 
 ### Plantillas incluidas
-1. Coordinación de equipo / proyecto (atención de solicitudes internas)
-2. Control de pagos y cobranza (finanzas)
-3. Gestión de consultas técnicas en obra (RFI / CDE)
-4. Matriz VDC / VIA / ICE / PPM
-5. Proceso comercial B2B
-6. Coordinación académica (AECODE)
-7. Gestión de sponsors / eventos
-8. Automatización administrativa (gestión documental)
+1. Coordinación de equipo / proyecto
+2. **Gestión de RFI en obra** (con cola/WIP, cycle time y cuello de botella)
+3. **Clash detection / coordinación BIM**
+4. **Sesión ICE** (decisiones)
+5. **Lookahead semanal / Last Planner** (restricciones, PPC)
+6. Consultas técnicas en obra (RFI / CDE)
+7. Control de pagos y cobranza (finanzas)
+8. Matriz VDC / VIA / ICE / PPM
+9. Proceso comercial B2B
+10. Coordinación académica (AECODE)
+11. Gestión de sponsors / eventos
+12. Automatización administrativa
 
 ## 🛠 Stack
 

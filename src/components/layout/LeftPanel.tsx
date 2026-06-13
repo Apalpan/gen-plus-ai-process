@@ -2,6 +2,7 @@ import { Bot } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { AIConversationPanel } from '../ai/AIConversationPanel';
 import { MeasurePanel } from '../process/MeasurePanel';
+import { ValidatePanel } from '../process/ValidatePanel';
 import { ImplementPanel } from '../process/ImplementPanel';
 import { SettingsPanel } from '../process/SettingsPanel';
 
@@ -27,6 +28,7 @@ export function LeftPanel() {
           </div>
         </div>
       )}
+      {section === 'validate' && <ValidatePanel />}
       {section === 'metrics' && <MeasurePanel />}
       {section === 'implement' && <ImplementPanel />}
       {section === 'settings' && <SettingsPanel />}

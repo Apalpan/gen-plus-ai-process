@@ -212,8 +212,13 @@ interface QuickNode {
   responsible?: string;
   code?: string;
   condition?: string;
+  description?: string;
   outputs?: string[];
+  inputs?: string[];
+  tools?: string[];
   sla?: string;
+  touchTime?: string;
+  waitTime?: string;
 }
 
 function quickProcess(opts: {
@@ -226,6 +231,8 @@ function quickProcess(opts: {
   northStar: string;
   tags: string[];
   maturity: ProcessMap['maturityLevel'];
+  unitOfFlow?: string;
+  industry?: string;
   lanes: { key: string; name: string; type: ProcessMap['lanes'][number]['type']; color: string; role?: string }[];
   nodes: QuickNode[];
   flow: [string, string, (Parameters<typeof makeEdge>[2])?][];
@@ -252,8 +259,13 @@ function quickProcess(opts: {
       laneId: laneMap[n.lane].id,
       responsible: n.responsible,
       condition: n.condition,
+      description: n.description,
       outputs: n.outputs,
+      inputs: n.inputs,
+      tools: n.tools,
       sla: n.sla,
+      touchTime: n.touchTime,
+      waitTime: n.waitTime,
     });
     nodeMap[n.key] = node;
     return node;
@@ -271,6 +283,8 @@ function quickProcess(opts: {
     version: '1.0',
     maturityLevel: opts.maturity,
     northStarMetric: opts.northStar,
+    unitOfFlow: opts.unitOfFlow,
+    industry: opts.industry,
     tags: opts.tags,
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -869,8 +883,291 @@ export function buildFinanzas(): ProcessMap {
   });
 }
 
+/* ============================================================
+   AEC — RFI (Request for Information) con capa de producción
+   ============================================================ */
+export function buildRFI(): ProcessMap {
+  return quickProcess({
+    id: 'tpl_rfi',
+    title: 'Gestión de RFI en obra',
+    description: 'Del RFI detectado en campo a la respuesta validada y comunicada, con cola de espera y métricas de flujo.',
+    objective: 'Reducir el cycle time de RFIs y cerrarlos dentro de SLA con trazabilidad en el CDE.',
+    context: 'Los RFIs se gestionan por correo: se acumulan sin control, no hay visibilidad del cuello de botella y muchos se cierran fuera de plazo.',
+    owner: 'Oficina técnica',
+    northStar: '% de RFIs cerrados dentro de SLA',
+    tags: ['RFI', 'obra', 'CDE', 'construcción', 'producción'],
+    maturity: 'optimized',
+    unitOfFlow: 'RFI',
+    industry: 'Construcción',
+    lanes: [
+      { key: 'campo', name: 'Campo', type: 'production', color: '#1E5CE8', role: 'Residente de obra' },
+      { key: 'ot', name: 'Oficina técnica', type: 'project', color: '#22D3EE', role: 'Coordinador técnico' },
+      { key: 'proy', name: 'Proyectista', type: 'support', color: '#8B5CF6', role: 'Especialista' },
+      { key: 'sup', name: 'Supervisión / Cliente', type: 'client', color: '#F5A623', role: 'Supervisor' },
+    ],
+    nodes: [
+      { key: 's', type: 'start', title: 'Duda técnica en obra', lane: 'campo' },
+      { key: 'elab', title: 'Elaborar RFI', lane: 'campo', code: 'RFI-01', responsible: 'Residente de obra', inputs: ['Planos', 'Foto/contexto'], outputs: ['RFI redactado'], touchTime: '1 h' },
+      { key: 'reg', title: 'Registrar RFI en CDE', lane: 'ot', code: 'RFI-02', responsible: 'Coordinador técnico', outputs: ['RFI registrado'], touchTime: '20 min', waitTime: '2 h' },
+      { key: 'cola', type: 'queue', title: 'RFIs en espera de revisión', lane: 'ot', description: 'RFIs registrados pendientes de revisión técnica', waitTime: '1 día' },
+      { key: 'rev', title: 'Revisar RFI', lane: 'ot', code: 'RFI-03', responsible: 'Coordinador técnico', outputs: ['RFI clasificado'], touchTime: '45 min' },
+      { key: 'd1', type: 'decision', title: '¿Requiere al proyectista?', lane: 'ot', condition: 'Impacta diseño o especificación', responsible: 'Coordinador técnico' },
+      { key: 'resp_ot', title: 'Responder en oficina técnica', lane: 'ot', responsible: 'Coordinador técnico', outputs: ['Respuesta técnica'], touchTime: '1 h' },
+      { key: 'cola2', type: 'queue', title: 'RFIs en espera del proyectista', lane: 'proy', description: 'RFIs derivados pendientes de respuesta', waitTime: '3 días' },
+      { key: 'resp_proy', title: 'Analizar y responder RFI', lane: 'proy', code: 'RFI-04', responsible: 'Especialista', outputs: ['Respuesta de diseño'], touchTime: '3 h', waitTime: '1 día' },
+      { key: 'd2', type: 'decision', title: '¿Impacta costo o plazo?', lane: 'sup', condition: 'Cambio con impacto contractual', responsible: 'Supervisor' },
+      { key: 'aprob', type: 'approval', title: 'Aprobar cambio', lane: 'sup', responsible: 'Supervisor', outputs: ['Cambio aprobado'], touchTime: '30 min', waitTime: '1 día' },
+      { key: 'comm', title: 'Comunicar respuesta a campo', lane: 'ot', code: 'RFI-05', responsible: 'Coordinador técnico', outputs: ['Respuesta comunicada'], touchTime: '20 min' },
+      { key: 'ev', type: 'evidence', title: 'Evidencia y cierre en CDE', lane: 'ot', outputs: ['RFI cerrado con trazabilidad'] },
+      { key: 'e', type: 'end', title: 'RFI cerrado', lane: 'campo' },
+    ],
+    flow: [
+      ['s', 'elab'], ['elab', 'reg'], ['reg', 'cola'], ['cola', 'rev'], ['rev', 'd1'],
+      ['d1', 'resp_ot', { type: 'decision_no' }], ['d1', 'cola2', { type: 'decision_yes' }],
+      ['cola2', 'resp_proy'], ['resp_proy', 'd2'],
+      ['d2', 'aprob', { type: 'decision_yes' }], ['d2', 'comm', { type: 'decision_no' }],
+      ['aprob', 'comm'], ['resp_ot', 'comm'], ['comm', 'ev'], ['ev', 'e'],
+    ],
+    metrics: [
+      makeMetric({ code: 'RFI-M1', name: '% RFIs cerrados en SLA', category: 'time', formula: 'RFIs en SLA / total', target: '≥ 90%', currentValue: '74%', frequency: 'Semanal', owner: 'Coordinador técnico', leadingOrLagging: 'lagging' }),
+      makeMetric({ code: 'RFI-M2', name: 'Cycle time promedio de RFI', category: 'time', formula: 'días promedio apertura → cierre', target: '≤ 5 días', currentValue: '9 días', frequency: 'Semanal', owner: 'Oficina técnica' }),
+      makeMetric({ code: 'RFI-M3', name: 'RFIs abiertos (WIP)', category: 'production_objective', formula: 'RFIs sin cerrar', target: '≤ 15', currentValue: '34', frequency: 'Diaria', owner: 'Oficina técnica' }),
+      makeMetric({ code: 'RFI-M4', name: '% RFIs reabiertos', category: 'quality', formula: 'reabiertos / cerrados', target: '≤ 5%', currentValue: '8%', frequency: 'Mensual', owner: 'Coordinador técnico' }),
+    ],
+    risks: [
+      makeRisk({ name: 'RFIs acumulados sin control', probability: 4, impact: 4, mitigation: 'Tablero único con límite de WIP y alertas de antigüedad.', owner: 'Oficina técnica' }),
+      makeRisk({ name: 'Respuesta tardía del proyectista', probability: 3, impact: 4, mitigation: 'SLA por especialidad y escalamiento a las 72 h.', owner: 'Coordinador técnico' }),
+    ],
+    automations: [
+      makeAutomation({ name: 'Alerta de RFI próximo a vencer', trigger: '24 h antes del SLA', action: 'Notificar al responsable y oficina técnica', inputData: 'Estado del RFI', outputData: 'Alerta', humanInTheLoop: false }),
+      makeAutomation({ name: 'Cierre con evidencia PDF', trigger: 'RFI respondido y comunicado', action: 'Generar PDF de trazabilidad y archivar en CDE', inputData: 'Hilo del RFI', outputData: 'PDF en CDE', humanInTheLoop: false }),
+    ],
+    documents: [
+      makeDocument({ name: 'Formato RFI', type: 'Formato', format: 'PDF / Form', repository: 'CDE / ACC', required: true }),
+      makeDocument({ name: 'Registro de RFIs', type: 'Registro', format: 'Sheets / ACC', repository: 'CDE', required: true }),
+    ],
+    assumptions: ['El CDE (ACC/BIM 360) es la fuente única.', 'Hay SLA acordado por especialidad.'],
+    openQuestions: ['¿Qué RFIs requieren doble aprobación?', '¿Cuál es el SLA contractual por tipo de RFI?'],
+    checklist: [
+      ['Definir SLA por especialidad', 'Setup'],
+      ['Configurar límite de WIP y tablero', 'Producción'],
+      ['Automatizar alertas de vencimiento', 'Automatización'],
+      ['Conectar dashboard de cycle time', 'Métricas'],
+    ],
+  });
+}
+
+/* ============================================================
+   AEC — Clash detection / coordinación BIM
+   ============================================================ */
+export function buildClash(): ProcessMap {
+  return quickProcess({
+    id: 'tpl_clash',
+    title: 'Clash detection y coordinación BIM',
+    description: 'De la federación de modelos a la resolución de interferencias críticas con seguimiento.',
+    objective: 'Resolver interferencias antes de obra y reducir retrabajo en campo.',
+    context: 'Las interferencias se detectan tarde; sin un flujo claro, los clashes se acumulan y llegan a obra.',
+    owner: 'BIM Manager',
+    northStar: '% de clashes críticos cerrados antes de construir',
+    tags: ['BIM', 'clash', 'coordinación', 'construcción'],
+    maturity: 'optimized',
+    unitOfFlow: 'Interferencia (clash)',
+    industry: 'Construcción',
+    lanes: [
+      { key: 'bim', name: 'BIM / Coordinación', type: 'project', color: '#22D3EE', role: 'BIM Coordinator' },
+      { key: 'esp', name: 'Especialidades', type: 'support', color: '#8B5CF6', role: 'Proyectista de especialidad' },
+      { key: 'obra', name: 'Producción / Obra', type: 'production', color: '#34D399', role: 'Jefe de producción' },
+    ],
+    nodes: [
+      { key: 's', type: 'start', title: 'Modelos actualizados', lane: 'bim' },
+      { key: 'fed', title: 'Federar modelos', lane: 'bim', code: 'BIM-01', responsible: 'BIM Coordinator', outputs: ['Modelo federado'], touchTime: '2 h' },
+      { key: 'run', title: 'Ejecutar clash detection', lane: 'bim', code: 'BIM-02', responsible: 'BIM Coordinator', outputs: ['Reporte de clashes'], touchTime: '1 h' },
+      { key: 'cls', title: 'Clasificar y priorizar clashes', lane: 'bim', code: 'BIM-03', responsible: 'BIM Coordinator', outputs: ['Clashes priorizados'], touchTime: '2 h' },
+      { key: 'd1', type: 'decision', title: '¿Interferencia crítica?', lane: 'bim', condition: 'Impacta construcción o seguridad', responsible: 'BIM Coordinator' },
+      { key: 'ignore', title: 'Registrar como tolerable', lane: 'bim', responsible: 'BIM Coordinator', outputs: ['Clash documentado'] },
+      { key: 'assign', type: 'handoff', title: 'Asignar a especialidad', lane: 'bim', responsible: 'BIM Coordinator', outputs: ['Clash asignado'] },
+      { key: 'cola', type: 'queue', title: 'Clashes en espera de resolución', lane: 'esp', description: 'Interferencias asignadas pendientes', waitTime: '4 días' },
+      { key: 'fix', title: 'Resolver interferencia en modelo', lane: 'esp', code: 'BIM-04', responsible: 'Proyectista de especialidad', outputs: ['Modelo corregido'], touchTime: '3 h', waitTime: '2 días' },
+      { key: 'ice', title: 'Validar en sesión ICE', lane: 'bim', code: 'ICE', responsible: 'BIM Coordinator', outputs: ['Decisión ICE'], sla: 'Semanal' },
+      { key: 'ev', type: 'evidence', title: 'Cerrar clash con evidencia', lane: 'bim', outputs: ['Clash cerrado'] },
+      { key: 'e', type: 'end', title: 'Coordinación cerrada', lane: 'obra' },
+    ],
+    flow: [
+      ['s', 'fed'], ['fed', 'run'], ['run', 'cls'], ['cls', 'd1'],
+      ['d1', 'assign', { type: 'decision_yes' }], ['d1', 'ignore', { type: 'decision_no' }],
+      ['assign', 'cola'], ['cola', 'fix'], ['fix', 'ice'], ['ice', 'ev'], ['ev', 'e'],
+    ],
+    metrics: [
+      makeMetric({ code: 'CL-M1', name: '% clashes críticos cerrados pre-obra', category: 'quality', formula: 'cerrados antes de construir / total críticos', target: '100%', currentValue: '82%', frequency: 'Por hito', owner: 'BIM Manager', leadingOrLagging: 'lagging' }),
+      makeMetric({ code: 'CL-M2', name: 'Tiempo de resolución de clash', category: 'time', formula: 'días promedio asignación → cierre', target: '≤ 7 días', currentValue: '11 días', frequency: 'Semanal', owner: 'BIM Coordinator' }),
+      makeMetric({ code: 'CL-M3', name: 'Clashes abiertos (WIP)', category: 'production_objective', formula: 'clashes críticos sin cerrar', target: '≤ 20', currentValue: '45', frequency: 'Semanal', owner: 'BIM Manager' }),
+    ],
+    risks: [
+      makeRisk({ name: 'Clashes críticos llegan a obra', probability: 3, impact: 5, mitigation: 'Gate de "no construir" hasta cerrar críticos; revisión en ICE.', owner: 'BIM Manager' }),
+      makeRisk({ name: 'Modelos desactualizados al federar', probability: 3, impact: 4, mitigation: 'Calendario de publicación semanal y checklist.', owner: 'BIM Coordinator' }),
+    ],
+    automations: [
+      makeAutomation({ name: 'Tarea por clash crítico', trigger: 'Clash crítico detectado', action: 'Crear tarea asignada a la especialidad', inputData: 'Reporte de clash', outputData: 'Tarea creada', humanInTheLoop: true }),
+      makeAutomation({ name: 'Actualizar dashboard al federar', trigger: 'Modelo federado publicado', action: 'Refrescar KPIs de coordinación', inputData: 'Versión del modelo', outputData: 'Dashboard actualizado', humanInTheLoop: false }),
+    ],
+    documents: [
+      makeDocument({ name: 'Reporte de clashes', type: 'Reporte', format: 'BCF / PDF', repository: 'CDE', required: true }),
+      makeDocument({ name: 'Acta ICE', type: 'Acta', format: 'PDF', repository: 'Drive', required: true }),
+    ],
+    assumptions: ['Existe cadencia semanal de coordinación/ICE.', 'Los modelos se publican en el CDE.'],
+    openQuestions: ['¿Qué tolerancia define un clash crítico?', '¿Quién aprueba excepciones?'],
+    checklist: [
+      ['Definir matriz de prioridad de clashes', 'Setup'],
+      ['Configurar gate "no construir" para críticos', 'Gobierno'],
+      ['Automatizar tareas por clash crítico', 'Automatización'],
+    ],
+  });
+}
+
+/* ============================================================
+   AEC — Sesión ICE (Integrated Concurrent Engineering)
+   ============================================================ */
+export function buildICE(): ProcessMap {
+  return quickProcess({
+    id: 'tpl_ice',
+    title: 'Sesión ICE (toma de decisiones)',
+    description: 'Preparar, ejecutar y cerrar una sesión ICE con agenda, pre-read y decisiones trazadas.',
+    objective: 'Reducir la latencia de decisiones del proyecto con sesiones ICE efectivas.',
+    context: 'Las reuniones de coordinación no cierran decisiones: sin agenda ni pre-read, se repiten temas y los acuerdos no se registran.',
+    owner: 'Líder VDC',
+    northStar: 'Latencia de decisiones (días) ≤ 3',
+    tags: ['ICE', 'VDC', 'decisiones', 'coordinación'],
+    maturity: 'optimized',
+    unitOfFlow: 'Decisión',
+    industry: 'Construcción',
+    lanes: [
+      { key: 'lider', name: 'Líder VDC', type: 'control', color: '#22D3EE', role: 'Líder VDC' },
+      { key: 'equipo', name: 'Equipo / Especialidades', type: 'support', color: '#8B5CF6', role: 'Participantes' },
+      { key: 'pmo', name: 'PMO / Registro', type: 'documentation', color: '#34D399', role: 'PMO' },
+    ],
+    nodes: [
+      { key: 's', type: 'start', title: 'Temas pendientes de decisión', lane: 'lider' },
+      { key: 'agenda', title: 'Preparar agenda y temas', lane: 'lider', code: 'ICE-01', responsible: 'Líder VDC', outputs: ['Agenda'], touchTime: '1 h' },
+      { key: 'preread', title: 'Enviar pre-read 48 h antes', lane: 'lider', code: 'ICE-02', responsible: 'Líder VDC', outputs: ['Pre-read enviado'], touchTime: '30 min' },
+      { key: 'd1', type: 'decision', title: '¿Participantes y pre-read listos?', lane: 'lider', condition: 'Quórum y material enviado', responsible: 'Líder VDC' },
+      { key: 'reprog', title: 'Reprogramar / completar', lane: 'lider', responsible: 'Líder VDC', outputs: ['Sesión reprogramada'] },
+      { key: 'run', title: 'Ejecutar sesión ICE', lane: 'equipo', code: 'ICE-03', responsible: 'Participantes', outputs: ['Temas trabajados'], touchTime: '2 h' },
+      { key: 'd2', type: 'decision', title: '¿Decisión tomada?', lane: 'equipo', condition: 'Hay acuerdo y dueño', responsible: 'Líder VDC' },
+      { key: 'park', type: 'queue', title: 'Temas en parking (sin decisión)', lane: 'lider', description: 'Temas que requieren más información', waitTime: '1 semana' },
+      { key: 'reg', title: 'Registrar decisión y responsable', lane: 'pmo', code: 'ICE-04', responsible: 'PMO', outputs: ['Decisión registrada'], touchTime: '20 min' },
+      { key: 'ev', type: 'evidence', title: 'Acta y acuerdos', lane: 'pmo', outputs: ['Acta ICE'] },
+      { key: 'e', type: 'end', title: 'Decisiones comunicadas', lane: 'lider' },
+    ],
+    flow: [
+      ['s', 'agenda'], ['agenda', 'preread'], ['preread', 'd1'],
+      ['d1', 'run', { type: 'decision_yes' }], ['d1', 'reprog', { type: 'decision_no' }],
+      ['reprog', 'preread', { type: 'feedback' }],
+      ['run', 'd2'], ['d2', 'reg', { type: 'decision_yes' }], ['d2', 'park', { type: 'decision_no' }],
+      ['reg', 'ev'], ['ev', 'e'],
+    ],
+    metrics: [
+      makeMetric({ code: 'ICE-M1', name: 'Latencia de decisiones', category: 'production_objective', formula: 'días promedio tema → decisión', target: '≤ 3 días', currentValue: '6 días', frequency: 'Semanal', owner: 'Líder VDC', leadingOrLagging: 'lagging' }),
+      makeMetric({ code: 'FCI-02', name: 'Agenda y pre-read 48 h antes', category: 'controllable_factor', formula: 'sesiones con pre-read / programadas', target: '100%', currentValue: '70%', frequency: 'Semanal', owner: 'Líder VDC', leadingOrLagging: 'leading' }),
+      makeMetric({ code: 'ICE-M3', name: '% decisiones cerradas en ICE', category: 'quality', formula: 'decisiones tomadas / temas', target: '≥ 80%', currentValue: '58%', frequency: 'Por sesión', owner: 'Líder VDC' }),
+    ],
+    risks: [
+      makeRisk({ name: 'Sesiones sin pre-read', probability: 3, impact: 3, mitigation: 'Bloquear agenda y enviar pre-read automático 48 h antes.', owner: 'Líder VDC' }),
+      makeRisk({ name: 'Decisiones sin dueño ni registro', probability: 3, impact: 4, mitigation: 'Plantilla de acta con dueño y fecha obligatorios.', owner: 'PMO' }),
+    ],
+    automations: [
+      makeAutomation({ name: 'Pre-read automático 48 h', trigger: '48 h antes de la sesión', action: 'Enviar agenda y pre-read a participantes', inputData: 'Agenda + temas', outputData: 'Pre-read enviado', humanInTheLoop: false }),
+      makeAutomation({ name: 'Acta automática de decisiones', trigger: 'Sesión finalizada', action: 'Generar acta con decisiones, dueños y fechas', inputData: 'Notas de la sesión', outputData: 'Acta ICE', humanInTheLoop: true }),
+    ],
+    documents: [
+      makeDocument({ name: 'Agenda / pre-read', type: 'Documento', format: 'PDF', repository: 'Drive', required: true }),
+      makeDocument({ name: 'Acta ICE', type: 'Acta', format: 'PDF', repository: 'Drive', required: true }),
+    ],
+    assumptions: ['Hay cadencia semanal de ICE.', 'Los participantes tienen autoridad para decidir.'],
+    openQuestions: ['¿Qué decisiones requieren al sponsor?', '¿Cómo se mide la calidad de la decisión?'],
+    checklist: [
+      ['Plantilla de agenda y pre-read', 'Setup'],
+      ['Automatizar pre-read 48 h', 'Automatización'],
+      ['Plantilla de acta con dueño/fecha', 'Operación'],
+    ],
+  });
+}
+
+/* ============================================================
+   AEC — Lookahead semanal y gestión de restricciones (Last Planner)
+   ============================================================ */
+export function buildLookahead(): ProcessMap {
+  return quickProcess({
+    id: 'tpl_lookahead',
+    title: 'Lookahead semanal y restricciones (LPS)',
+    description: 'Planificación semanal Last Planner: liberar restricciones, comprometer trabajo y medir PPC.',
+    objective: 'Aumentar la confiabilidad del plan (PPC) liberando restricciones antes de comprometer trabajo.',
+    context: 'El plan semanal no se cumple: se compromete trabajo no liberado y las restricciones se gestionan tarde.',
+    owner: 'Last Planner / Producción',
+    northStar: 'PPC ≥ 85%',
+    tags: ['lookahead', 'last planner', 'PPC', 'restricciones', 'producción'],
+    maturity: 'optimized',
+    unitOfFlow: 'Tarea / compromiso',
+    industry: 'Construcción',
+    lanes: [
+      { key: 'plan', name: 'Planificación', type: 'control', color: '#22D3EE', role: 'Planner' },
+      { key: 'last', name: 'Last Planners (campo)', type: 'production', color: '#1E5CE8', role: 'Capataz / Subcontrata' },
+      { key: 'rest', name: 'Liberación de restricciones', type: 'support', color: '#F5A623', role: 'Responsable de restricción' },
+    ],
+    nodes: [
+      { key: 's', type: 'start', title: 'Plan maestro / fase', lane: 'plan' },
+      { key: 'look', title: 'Generar lookahead (3–6 sem)', lane: 'plan', code: 'LA-01', responsible: 'Planner', outputs: ['Tareas lookahead'], touchTime: '2 h' },
+      { key: 'rest_id', title: 'Identificar restricciones', lane: 'plan', code: 'LA-02', responsible: 'Planner', outputs: ['Lista de restricciones'], touchTime: '1 h' },
+      { key: 'cola', type: 'queue', title: 'Restricciones abiertas', lane: 'rest', description: 'Restricciones pendientes de liberar', waitTime: '1 semana' },
+      { key: 'free', title: 'Liberar restricciones (make-ready)', lane: 'rest', code: 'LA-03', responsible: 'Responsable de restricción', outputs: ['Restricción liberada'], touchTime: '4 h', waitTime: '3 días' },
+      { key: 'd1', type: 'decision', title: '¿Tarea liberada (can)?', lane: 'plan', condition: 'Sin restricciones pendientes', responsible: 'Planner' },
+      { key: 'hold', title: 'No comprometer (mantener en lookahead)', lane: 'plan', responsible: 'Planner', outputs: ['Tarea en espera'] },
+      { key: 'commit', title: 'Comprometer trabajo semanal (will)', lane: 'last', code: 'LA-04', responsible: 'Capataz / Subcontrata', outputs: ['Compromisos semanales'], touchTime: '1 h' },
+      { key: 'exec', title: 'Ejecutar trabajo (did)', lane: 'last', responsible: 'Capataz / Subcontrata', outputs: ['Trabajo ejecutado'] },
+      { key: 'ppc', title: 'Medir PPC y razones de no cumplimiento (learn)', lane: 'plan', code: 'LA-05', responsible: 'Planner', outputs: ['PPC + razones'], touchTime: '1 h' },
+      { key: 'ev', type: 'evidence', title: 'Acta semanal y aprendizajes', lane: 'plan', outputs: ['Acta + acciones'] },
+      { key: 'e', type: 'end', title: 'Plan de la próxima semana', lane: 'plan' },
+    ],
+    flow: [
+      ['s', 'look'], ['look', 'rest_id'], ['rest_id', 'cola'], ['cola', 'free'], ['free', 'd1'],
+      ['d1', 'commit', { type: 'decision_yes' }], ['d1', 'hold', { type: 'decision_no' }],
+      ['hold', 'look', { type: 'feedback' }],
+      ['commit', 'exec'], ['exec', 'ppc'], ['ppc', 'ev'], ['ev', 'e'],
+    ],
+    metrics: [
+      makeMetric({ code: 'LPS-M1', name: 'PPC (Plan Percent Complete)', category: 'production_objective', formula: 'compromisos cumplidos / comprometidos', target: '≥ 85%', currentValue: '62%', frequency: 'Semanal', owner: 'Planner', leadingOrLagging: 'lagging' }),
+      makeMetric({ code: 'LPS-M2', name: 'Restricciones liberadas a tiempo', category: 'controllable_factor', formula: 'liberadas en fecha / requeridas', target: '≥ 90%', currentValue: '70%', frequency: 'Semanal', owner: 'Responsable de restricción', leadingOrLagging: 'leading' }),
+      makeMetric({ code: 'LPS-M3', name: 'Make-ready rate', category: 'controllable_factor', formula: 'tareas liberadas / tareas lookahead', target: '≥ 80%', currentValue: '65%', frequency: 'Semanal', owner: 'Planner', leadingOrLagging: 'leading' }),
+    ],
+    risks: [
+      makeRisk({ name: 'Comprometer trabajo no liberado', probability: 4, impact: 4, mitigation: 'Regla "no se compromete sin restricciones liberadas".', owner: 'Planner' }),
+      makeRisk({ name: 'Restricciones sin responsable ni fecha', probability: 3, impact: 4, mitigation: 'Cada restricción con dueño y fecha de liberación.', owner: 'Planner' }),
+    ],
+    automations: [
+      makeAutomation({ name: 'Alerta de restricción próxima a vencer', trigger: '48 h antes de la fecha de liberación', action: 'Notificar al responsable', inputData: 'Lista de restricciones', outputData: 'Alerta', humanInTheLoop: false }),
+      makeAutomation({ name: 'Cálculo automático de PPC', trigger: 'Cierre de semana', action: 'Calcular PPC y registrar razones de no cumplimiento', inputData: 'Compromisos vs ejecutado', outputData: 'PPC + razones', humanInTheLoop: true }),
+    ],
+    documents: [
+      makeDocument({ name: 'Lookahead', type: 'Plan', format: 'Sheets', repository: 'Workspace', required: true }),
+      makeDocument({ name: 'Registro de restricciones', type: 'Registro', format: 'Sheets', repository: 'Workspace', required: true }),
+      makeDocument({ name: 'Acta semanal (PPC)', type: 'Acta', format: 'PDF', repository: 'Drive', required: true }),
+    ],
+    assumptions: ['Hay reunión semanal de planificación.', 'Las subcontratas participan en el compromiso.'],
+    openQuestions: ['¿Quién libera cada tipo de restricción?', '¿Cómo se clasifican las razones de no cumplimiento?'],
+    checklist: [
+      ['Definir tipos de restricción y dueños', 'Setup'],
+      ['Regla: no comprometer sin liberar', 'Gobierno'],
+      ['Automatizar PPC y razones', 'Métricas'],
+    ],
+  });
+}
+
 export const templates: ProcessTemplate[] = [
   { id: 'tpl_coordinacion', name: 'Coordinación de equipo / proyecto', description: 'Flujo de coordinación de extremo a extremo con responsables y SLA.', kind: 'operaciones', icon: 'Users', build: buildCoordinacion },
+  { id: 'tpl_rfi', name: 'Gestión de RFI en obra', description: 'RFI con cola de espera, cycle time y cuello de botella (PPI).', kind: 'obra', icon: 'HelpCircle', build: buildRFI },
+  { id: 'tpl_clash', name: 'Clash detection / coordinación BIM', description: 'De la federación a la resolución de interferencias críticas.', kind: 'bim_via', icon: 'Boxes', build: buildClash },
+  { id: 'tpl_ice', name: 'Sesión ICE (decisiones)', description: 'Agenda, pre-read, ejecución y decisiones trazadas.', kind: 'ice', icon: 'Presentation', build: buildICE },
+  { id: 'tpl_lookahead', name: 'Lookahead semanal (Last Planner)', description: 'Liberar restricciones, comprometer trabajo y medir PPC.', kind: 'ppm', icon: 'CalendarRange', build: buildLookahead },
+  { id: 'tpl_obra_example', name: 'Consultas técnicas en obra', description: 'RFI/CDE de extremo a extremo con trazabilidad y métricas.', kind: 'obra', icon: 'HardHat', build: buildObra },
   { id: 'tpl_finanzas', name: 'Control de pagos y cobranza', description: 'Validación, aprobación, ejecución y conciliación financiera.', kind: 'finanzas', icon: 'Wallet', build: buildFinanzas },
   { id: 'tpl_obra_example', name: 'Consultas técnicas en obra', description: 'RFI/CDE de extremo a extremo con trazabilidad y métricas.', kind: 'obra', icon: 'HardHat', build: buildObra },
   { id: 'tpl_vdc', name: 'Matriz VDC / VIA / ICE / PPM', description: 'Cadena causal de objetivos y factores controlables.', kind: 'bim_via', icon: 'Network', build: buildVDC },

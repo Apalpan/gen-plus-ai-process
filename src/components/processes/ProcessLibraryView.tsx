@@ -14,6 +14,7 @@ import { useProcessStore } from '../../store/useProcessStore';
 import { templates } from '../../data/templates';
 import { runHealthCheck } from '../../lib/health';
 import { aiFirstScore, automationPotential } from '../../lib/aiFirst';
+import { productionScore } from '../../lib/productionScience';
 import { STATUS_META } from '../../lib/processSchema';
 import { fromJSON } from '../../lib/jsonExporter';
 import { Button } from '../ui/Button';
@@ -157,6 +158,7 @@ export function ProcessLibraryView() {
                 const health = runHealthCheck(p).score;
                 const ai = aiFirstScore(p);
                 const auto = automationPotential(p);
+                const ps = productionScore(p);
                 return (
                   <div key={s.id} className="gen-surface flex flex-col rounded-card p-4 transition-all duration-150 hover:border-brand-400/40">
                     <div className="flex items-start justify-between gap-2">
@@ -181,6 +183,7 @@ export function ProcessLibraryView() {
                       </span>
                       <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] gen-text-muted">Salud {health}</span>
                       <span className="rounded-full bg-brand-500/12 px-2 py-0.5 text-[10px] font-semibold text-brand-300">AI First {ai}</span>
+                      <span className="rounded-full bg-accent-amber/12 px-2 py-0.5 text-[10px] font-semibold text-accent-amber">Prod {ps}</span>
                       <span className="rounded-full bg-accent-violet/12 px-2 py-0.5 text-[10px] font-semibold text-accent-violet">{auto}% auto</span>
                     </div>
 

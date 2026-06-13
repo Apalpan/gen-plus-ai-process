@@ -18,6 +18,8 @@ import {
   buildEventos,
   buildFinanzas,
   buildGeneric,
+  buildICE,
+  buildLookahead,
   buildObra,
   buildVDC,
 } from '../data/templates';
@@ -58,9 +60,11 @@ function buildForKind(kind: ProcessKind): ProcessMap {
     case 'obra':
       return buildObra();
     case 'bim_via':
-    case 'ice':
-    case 'ppm':
       return buildVDC();
+    case 'ice':
+      return buildICE();
+    case 'ppm':
+      return buildLookahead();
     case 'comercial':
     case 'marketing':
       return buildComercial();

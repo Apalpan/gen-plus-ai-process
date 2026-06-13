@@ -29,6 +29,8 @@ export const NODE_TYPE_META: Record<
   automation: { label: 'Automatización', color: '#8B5CF6', ring: 'rgba(139,92,246,0.5)', tint: 'rgba(139,92,246,0.12)' },
   approval: { label: 'Aprobación', color: '#F5A623', ring: 'rgba(245,166,35,0.5)', tint: 'rgba(245,166,35,0.12)' },
   handoff: { label: 'Handoff', color: '#FB923C', ring: 'rgba(251,146,60,0.5)', tint: 'rgba(251,146,60,0.12)' },
+  queue: { label: 'Cola / WIP', color: '#FB923C', ring: 'rgba(251,146,60,0.5)', tint: 'rgba(251,146,60,0.14)' },
+  buffer: { label: 'Buffer', color: '#0EA5B7', ring: 'rgba(14,165,183,0.5)', tint: 'rgba(14,165,183,0.12)' },
 };
 
 export const LANE_COLORS: string[] = [

@@ -9,8 +9,9 @@ import type { NodeType, Priority, ProcessNodeData } from '../../types/process';
 const linesToArray = (s: string): string[] => s.split('\n').map((x) => x.trim()).filter(Boolean);
 const arrayToLines = (a?: string[]): string => (a ?? []).join('\n');
 
-const NODE_TYPES: NodeType[] = ['start', 'end', 'activity', 'decision', 'document', 'evidence', 'system', 'approval', 'handoff', 'metric', 'risk', 'automation'];
+const NODE_TYPES: NodeType[] = ['start', 'end', 'activity', 'decision', 'document', 'evidence', 'system', 'approval', 'handoff', 'queue', 'buffer', 'metric', 'risk', 'automation'];
 const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical'];
+const VARIABILITY = ['baja', 'media', 'alta'] as const;
 
 export function NodeInspector({ node }: { node: ProcessNodeData }) {
   const patchNode = useProcessStore((s) => s.patchNode);
@@ -102,6 +103,42 @@ export function NodeInspector({ node }: { node: ProcessNodeData }) {
           </Field>
           <Field label="Duración est.">
             <Input value={node.estimatedDuration ?? ''} placeholder="2 h" onChange={(e) => set({ estimatedDuration: e.target.value })} />
+          </Field>
+        </div>
+
+        {/* Producción (PPI / Operations Science) */}
+        <div className="mt-1 mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-brand-300">
+          Producción (PPI)
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Touch time" hint="Trabajo real (2 h).">
+            <Input value={node.touchTime ?? ''} placeholder="2 h" onChange={(e) => set({ touchTime: e.target.value })} />
+          </Field>
+          <Field label="Wait time" hint="Espera / cola (1 día).">
+            <Input value={node.waitTime ?? ''} placeholder="1 día" onChange={(e) => set({ waitTime: e.target.value })} />
+          </Field>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Capacidad">
+            <Input value={node.capacity ?? ''} placeholder="8/día" onChange={(e) => set({ capacity: e.target.value })} />
+          </Field>
+          <Field label="WIP límite">
+            <Input
+              type="number"
+              value={node.wipLimit ?? ''}
+              placeholder="—"
+              onChange={(e) => set({ wipLimit: e.target.value ? Number(e.target.value) : undefined })}
+            />
+          </Field>
+          <Field label="Variabilidad">
+            <Select value={node.variabilityLevel ?? ''} onChange={(e) => set({ variabilityLevel: (e.target.value || undefined) as ProcessNodeData['variabilityLevel'] })}>
+              <option value="">—</option>
+              {VARIABILITY.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
 

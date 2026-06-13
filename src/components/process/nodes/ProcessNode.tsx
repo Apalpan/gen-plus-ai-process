@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   ArrowLeftRight,
   FileCheck2,
+  Hourglass,
+  Shield,
   Clock,
   User,
   Trash2,
@@ -33,6 +35,8 @@ const ICONS: Partial<Record<NodeType, LucideIcon>> = {
   approval: CheckCircle2,
   handoff: ArrowLeftRight,
   evidence: FileCheck2,
+  queue: Hourglass,
+  buffer: Shield,
 };
 
 interface ProcessNodeFlowData {

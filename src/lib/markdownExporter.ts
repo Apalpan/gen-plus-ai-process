@@ -1,6 +1,7 @@
 import type { ProcessMap } from '../types/process';
 import { runHealthCheck } from './health';
 import { aiFirstBand, aiFirstScore, runAIFirst } from './aiFirst';
+import { runProduction } from './productionScience';
 import { NODE_TYPE_META } from './processSchema';
 
 function laneName(p: ProcessMap, laneId: string): string {
@@ -17,6 +18,7 @@ function toExecutiveMarkdown(p: ProcessMap): string {
   const health = runHealthCheck(p);
   const report = runAIFirst(p);
   const ai = aiFirstScore(p);
+  const prod = runProduction(p);
   const md: string[] = [];
 
   md.push(`# ${p.title} — Ficha de implementación`);
@@ -24,7 +26,7 @@ function toExecutiveMarkdown(p: ProcessMap): string {
   md.push(`> ${p.description || 'Proceso mapeado con GEN+ AI Process.'}`);
   md.push('');
   md.push(`**Área:** ${p.area ?? '—'} · **Áreas involucradas:** ${list(p.involvedAreas)} · **Responsable:** ${p.owner ?? '—'}`);
-  md.push(`**Estado:** ${p.status ?? 'mapeado'} · **Health Score:** ${health.score}/100 · **AI First Score:** ${ai}/100 (${aiFirstBand(ai)})`);
+  md.push(`**Estado:** ${p.status ?? 'mapeado'} · **Health:** ${health.score}/100 · **AI First:** ${ai}/100 (${aiFirstBand(ai)}) · **Producción (PPI):** ${prod.score}/100`);
   md.push('');
 
   md.push('## 1. Resumen ejecutivo');
@@ -52,6 +54,11 @@ function toExecutiveMarkdown(p: ProcessMap): string {
     md.push('|---|---|---|---|---|');
     p.metrics.forEach((m) => md.push(`| ${m.name} | ${m.formula} | ${m.target} | ${m.frequency ?? '—'} | ${m.owner ?? '—'} |`));
   } else md.push('— Definir métricas en el paso Medir.');
+  md.push('');
+
+  md.push('## 4b. Sistema de producción (PPI / Operations Science)');
+  md.push(`Unidad de flujo: ${prod.unitOfFlow}. Cycle time: ${prod.cycleTime} (trabajo ${prod.touchTime} / espera ${prod.waitTime}). Eficiencia de flujo: ${prod.flowEfficiency}%. WIP: ${prod.wip} · Throughput: ${prod.throughput}.`);
+  if (prod.bottleneck) md.push(`Cuello de botella: **${prod.bottleneck.title}** — ${prod.bottleneck.reason}`);
   md.push('');
 
   md.push('## 5. Proceso futuro AI First');

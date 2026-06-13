@@ -32,7 +32,7 @@ const NODE_DEFAULT_TITLE: Partial<Record<NodeType, string>> = {
   metric: 'Métrica',
   risk: 'Riesgo',
 };
-import { buildCoordinacion, buildFinanzas, buildObra, getTemplateById } from '../data/templates';
+import { buildCoordinacion, buildFinanzas, buildObra, buildRFI, getTemplateById } from '../data/templates';
 import { generateProcessFromAI } from '../ai/ProcessGenerator';
 import { runCopilot } from '../ai/copilot';
 import { storage } from '../lib/storage';
@@ -46,12 +46,13 @@ export type Section =
   | 'processes'
   | 'capture'
   | 'map'
+  | 'validate'
   | 'metrics'
   | 'aifirst'
   | 'implement'
   | 'settings';
 
-export const FLOW_SECTIONS: Section[] = ['capture', 'map', 'metrics', 'aifirst', 'implement'];
+export const FLOW_SECTIONS: Section[] = ['capture', 'map', 'validate', 'metrics', 'aifirst', 'implement'];
 
 export interface SavedProcess {
   id: string;
@@ -160,7 +161,8 @@ const initialLibrary = ((): SavedProcess[] => {
   const lib = storage.read<SavedProcess[]>('library', []);
   if (lib.length > 0 || storage.read('demoSeeded', false)) return lib;
   const demos: SavedProcess[] = [
-    { ...buildCoordinacion(), status: 'medido' as const, area: 'Operaciones', favorite: true },
+    { ...buildRFI(), status: 'medido' as const, area: 'Construcción', favorite: true },
+    { ...buildCoordinacion(), status: 'mapeado' as const, area: 'Operaciones' },
     { ...buildFinanzas(), status: 'mapeado' as const, area: 'Finanzas' },
   ].map((p) => ({ id: p.id, title: p.title, updatedAt: p.updatedAt, maturityLevel: p.maturityLevel, process: p }));
   storage.write('demoSeeded', true);

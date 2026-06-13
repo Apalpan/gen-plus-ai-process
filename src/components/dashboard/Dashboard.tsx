@@ -9,16 +9,20 @@ import {
   Zap,
   Clock,
   ArrowRight,
+  Factory,
+  Network,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { runHealthCheck } from '../../lib/health';
 import { aiFirstScore, automationPotential } from '../../lib/aiFirst';
+import { productionScore } from '../../lib/productionScience';
+import { vdcCoverage } from '../../lib/vdc';
 import { STATUS_META } from '../../lib/processSchema';
 import { Badge } from '../ui/Badge';
 
-function Kpi({ icon: Icon, label, value, hint, tone = 'brand' }: { icon: LucideIcon; label: string; value: string; hint?: string; tone?: 'brand' | 'green' | 'amber' | 'red' }) {
-  const colors = { brand: 'text-brand-400', green: 'text-accent-green', amber: 'text-accent-amber', red: 'text-accent-red' };
+function Kpi({ icon: Icon, label, value, hint, tone = 'brand' }: { icon: LucideIcon; label: string; value: string; hint?: string; tone?: 'brand' | 'green' | 'amber' | 'red' | 'cyan' }) {
+  const colors = { brand: 'text-brand-400', green: 'text-accent-green', amber: 'text-accent-amber', red: 'text-accent-red', cyan: 'text-accent-cyan' };
   return (
     <div className="gen-surface rounded-card p-4">
       <div className="flex items-center gap-2">
@@ -66,6 +70,8 @@ export function Dashboard() {
   ).length;
   const criticalRisk = procs.filter((p) => p.risks.some((r) => (r.severity ?? r.probability * r.impact) >= 15)).length;
   const avgAIFirst = total ? Math.round(procs.reduce((s, p) => s + aiFirstScore(p), 0) / total) : 0;
+  const avgProduction = total ? Math.round(procs.reduce((s, p) => s + productionScore(p), 0) / total) : 0;
+  const avgVdc = total ? Math.round(procs.reduce((s, p) => s + vdcCoverage(p).score, 0) / total) : 0;
   const automatableNodes = procs.reduce((s, p) => s + Math.round((automationPotential(p) / 100) * p.nodes.filter((n) => ['activity', 'approval', 'handoff', 'decision'].includes(n.type)).length), 0);
   const savings = automatableNodes * 6; // estimación: ~6 h/mes por actividad automatizable
 
@@ -97,13 +103,15 @@ export function Dashboard() {
       </div>
 
       {/* KPIs */}
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi icon={FolderKanban} label="Procesos mapeados" value={String(total)} />
         <Kpi icon={Gauge} label="Con métricas" value={`${withMetrics}/${total}`} tone="green" />
         <Kpi icon={Zap} label="Alto potencial de automatización" value={String(highAuto)} tone="brand" hint="≥ 50% automatizable" />
         <Kpi icon={UserX} label="Sin responsable" value={String(noOwner)} tone={noOwner ? 'amber' : 'green'} hint="Actividades sin dueño" />
         <Kpi icon={ShieldAlert} label="Riesgos críticos" value={String(criticalRisk)} tone={criticalRisk ? 'red' : 'green'} />
         <Kpi icon={Sparkles} label="AI First promedio" value={`${avgAIFirst}`} tone="brand" hint="Score 0–100" />
+        <Kpi icon={Factory} label="Producción promedio" value={`${avgProduction}`} tone="amber" hint="PPI / Op. Science" />
+        <Kpi icon={Network} label="Cobertura VDC" value={`${avgVdc}%`} tone="cyan" hint="cliente→producción" />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -28,7 +28,9 @@ export type NodeType =
   | 'automation'
   | 'approval'
   | 'handoff'
-  | 'evidence';
+  | 'evidence'
+  | 'queue' // cola / WIP — el trabajo se acumula y espera
+  | 'buffer'; // amortigua variabilidad (tiempo, capacidad o inventario)
 
 export type EdgeType =
   | 'sequence'
@@ -101,6 +103,14 @@ export interface ProcessNodeData {
   status?: NodeStatus;
   priority?: Priority;
   condition?: string; // for decision nodes
+  evidence?: string;
+  /* Production Science (Operations Science / PPI) fields */
+  touchTime?: string; // tiempo de trabajo real (ej. "2 h")
+  waitTime?: string; // tiempo de espera / cola (ej. "1 día")
+  wipLimit?: number; // límite de trabajo en proceso
+  capacity?: string; // capacidad del recurso/estación (ej. "8/día")
+  variabilityLevel?: 'baja' | 'media' | 'alta';
+  batchSize?: number;
   metricIds?: string[];
   riskIds?: string[];
   automationIds?: string[];
@@ -235,6 +245,8 @@ export interface ProcessMap {
   futureStateSummary?: string;
   agents?: AIAgentRecommendation[];
   roadmap?: RoadmapItem[];
+  unitOfFlow?: string; // qué fluye por el sistema (RFI, consulta, plano, lote…)
+  industry?: string;
   lanes: Lane[];
   nodes: ProcessNodeData[];
   edges: ProcessEdgeData[];
@@ -340,4 +352,49 @@ export interface AIFirstReport {
   roadmap: RoadmapItem[];
   currentSummary: string[];
   futureSummary: string[];
+}
+
+/* ---- Production Science (PPI / Operations Science) ---- */
+
+export interface ProductionLever {
+  lever: 'process_design' | 'product_design' | 'variability' | 'wip' | 'capacity';
+  label: string;
+  question: string;
+  finding: string;
+}
+
+export interface ProductionReport {
+  score: number; // 0..100 — Production Science Score
+  bandLabel: string;
+  cycleTime: string; // CT total (touch + wait) en horas
+  touchTime: string;
+  waitTime: string;
+  flowEfficiency: number; // 0..100 (touch / (touch+wait))
+  wip: number; // estaciones de trabajo en proceso
+  throughput: string; // TH ≈ WIP / CT (Little's Law), unidades/día
+  unitOfFlow: string;
+  bottleneck?: { nodeId: string; title: string; reason: string };
+  handoffs: number;
+  queues: number;
+  levers: ProductionLever[];
+  insights: string[];
+  dataCompleteness: number; // 0..100 — % de pasos con touch/wait
+}
+
+/* ---- Flow validation (reglas pedagógicas AEC / Lean) ---- */
+
+export interface FlowIssue {
+  id: string;
+  rule: string;
+  severity: HealthSeverity;
+  detail: string;
+  fix: string;
+  nodeId?: string;
+}
+
+export interface FlowValidationReport {
+  score: number; // 0..100 — % de reglas que pasan
+  passed: number;
+  total: number;
+  issues: FlowIssue[];
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Activity, GitBranch, FileText, CheckCircle2, Zap, Flag } from 'lucide-react';
+import { Plus, Activity, GitBranch, FileText, CheckCircle2, Zap, Hourglass, Flag } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useProcessStore } from '../../../store/useProcessStore';
 import type { EdgeType, NodeType } from '../../../types/process';
@@ -10,6 +10,7 @@ const OPTIONS: { type: NodeType; label: string; icon: LucideIcon; color: string 
   { type: 'decision', label: 'Decisión', icon: GitBranch, color: '#F5A623' },
   { type: 'document', label: 'Documento', icon: FileText, color: '#22D3EE' },
   { type: 'approval', label: 'Aprobación', icon: CheckCircle2, color: '#F5A623' },
+  { type: 'queue', label: 'Cola / WIP', icon: Hourglass, color: '#FB923C' },
   { type: 'automation', label: 'Automatización', icon: Zap, color: '#8B5CF6' },
   { type: 'end', label: 'Fin', icon: Flag, color: '#1E5CE8' },
 ];

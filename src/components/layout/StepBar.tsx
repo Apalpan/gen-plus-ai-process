@@ -1,4 +1,4 @@
-import { PenLine, Workflow, Gauge, Sparkles, Rocket, Check } from 'lucide-react';
+import { PenLine, Workflow, ShieldCheck, Gauge, Sparkles, Rocket, Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import type { Section } from '../../store/useProcessStore';
@@ -7,9 +7,10 @@ import { cn } from '../../lib/cn';
 const STEPS: { id: Section; n: number; label: string; icon: LucideIcon }[] = [
   { id: 'capture', n: 1, label: 'Capturar', icon: PenLine },
   { id: 'map', n: 2, label: 'Mapear', icon: Workflow },
-  { id: 'metrics', n: 3, label: 'Medir', icon: Gauge },
-  { id: 'aifirst', n: 4, label: 'AI First', icon: Sparkles },
-  { id: 'implement', n: 5, label: 'Implementar', icon: Rocket },
+  { id: 'validate', n: 3, label: 'Validar', icon: ShieldCheck },
+  { id: 'metrics', n: 4, label: 'Medir', icon: Gauge },
+  { id: 'aifirst', n: 5, label: 'AI First', icon: Sparkles },
+  { id: 'implement', n: 6, label: 'Implementar', icon: Rocket },
 ];
 
 /** Stepper del flujo de producción: el usuario siempre sabe en qué paso está. */
@@ -18,9 +19,11 @@ export function StepBar() {
   const setSection = useProcessStore((s) => s.setSection);
   const process = useProcessStore((s) => s.process);
 
+  const workNodes = process.nodes.filter((n) => ['activity', 'approval', 'handoff'].includes(n.type));
   const done: Record<Section, boolean> = {
     capture: process.nodes.length > 0,
-    map: process.nodes.length > 0 && process.nodes.filter((n) => n.responsible).length > 0,
+    map: process.nodes.length > 0 && process.nodes.some((n) => n.responsible),
+    validate: workNodes.length > 0 && workNodes.every((n) => n.responsible?.trim()),
     metrics: process.metrics.length > 0,
     aifirst: (process.roadmap?.length ?? 0) > 0,
     implement: process.status === 'en_implementacion' || process.status === 'implementado',
