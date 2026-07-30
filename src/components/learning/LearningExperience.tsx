@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { BookOpen, ExternalLink, Home, Layers3, Map, RotateCcw } from 'lucide-react';
 import { aecodeF3Route } from '../../data/aecodeF3Route';
 import { useProcessStore } from '../../store/useProcessStore';
@@ -13,10 +14,16 @@ const VIEWS: Array<{ id: LearningRouteView; label: string; icon: typeof Home }> 
 ];
 
 export function LearningExperience() {
+  const viewNavRef = useRef<HTMLElement>(null);
   const progress = useProcessStore((state) => state.learningProgress);
   const setLearningView = useProcessStore((state) => state.setLearningView);
   const resetLearningDemo = useProcessStore((state) => state.resetLearningDemo);
   const setView = useProcessStore((state) => state.setView);
+
+  useEffect(() => {
+    const activeView = viewNavRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    activeView?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [progress.view]);
 
   return (
     <div className="aecode-app">
@@ -37,7 +44,7 @@ export function LearningExperience() {
         </button>
       </header>
 
-      <nav className="ae-view-nav" aria-label="Vistas de la ruta">
+      <nav ref={viewNavRef} className="ae-view-nav" aria-label="Vistas de la ruta">
         {VIEWS.map((view) => {
           const Icon = view.icon;
           return (
