@@ -42,6 +42,7 @@ export default {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
         display: ['"Space Grotesk"', '"Plus Jakarta Sans"', 'sans-serif'],
+        aecode: ['"Manrope"', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       borderRadius: {

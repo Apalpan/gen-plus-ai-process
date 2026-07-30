@@ -12,6 +12,7 @@ import { Dashboard } from '../dashboard/Dashboard';
 import { ProcessLibraryView } from '../processes/ProcessLibraryView';
 import { CaptureView } from '../capture/CaptureView';
 import { AIFirstView } from '../aifirst/AIFirstView';
+import { LearningExperience } from '../learning/LearningExperience';
 
 const FULL_WIDTH: Section[] = ['dashboard', 'processes', 'capture', 'aifirst'];
 
@@ -40,16 +41,16 @@ export function AppShell() {
   const showSteps = FLOW_SECTIONS.includes(section);
   const isLearningRoute = process.tags.includes('ruta-ia');
 
+  if (isLearningRoute) return <LearningExperience />;
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-ink-900 text-white">
       <Topbar />
       <div className="flex min-h-0 flex-1">
-        <div className={isLearningRoute ? 'hidden md:contents' : 'contents'}>
-          <Sidebar />
-        </div>
+        <Sidebar />
         {fullWidth ? (
           <main className="flex min-w-0 flex-1 flex-col">
-            {showSteps && !isLearningRoute && <StepBar />}
+            {showSteps && <StepBar />}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {section === 'dashboard' && <Dashboard />}
               {section === 'processes' && <ProcessLibraryView />}
@@ -59,24 +60,20 @@ export function AppShell() {
           </main>
         ) : (
           <>
-            {leftOpen && !isLearningRoute && (
+            {leftOpen && (
               <div className="hidden md:contents">
                 <LeftPanel />
               </div>
             )}
             <main className="relative flex min-w-0 flex-1 flex-col">
-              {showSteps && !isLearningRoute && <StepBar />}
+              {showSteps && <StepBar />}
               <div className="relative min-h-0 flex-1">
                 <ProcessCanvas />
-                {!isLearningRoute && (
-                  <>
-                    <SeamToggle side="left" open={leftOpen} onClick={() => togglePanel('left')} />
-                    <SeamToggle side="right" open={rightOpen} onClick={() => togglePanel('right')} />
-                  </>
-                )}
+                <SeamToggle side="left" open={leftOpen} onClick={() => togglePanel('left')} />
+                <SeamToggle side="right" open={rightOpen} onClick={() => togglePanel('right')} />
               </div>
             </main>
-            {rightOpen && !isLearningRoute && (
+            {rightOpen && (
               <div className="hidden md:contents">
                 <RightPanel />
               </div>
@@ -84,9 +81,7 @@ export function AppShell() {
           </>
         )}
       </div>
-      <div className={isLearningRoute ? 'hidden md:block' : 'contents'}>
-        <BottomBar />
-      </div>
+      <BottomBar />
     </div>
   );
 }
