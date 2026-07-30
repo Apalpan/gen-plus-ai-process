@@ -98,3 +98,37 @@
 
   color-scheme: dark;
 }
+
+/* AECODE F3 lives in a dedicated product surface and does not mutate GEN+ tokens. */
+.aecode-app {
+  --ae-bg: #0e1121;
+  --ae-bg-deep: #0d0f1f;
+  --ae-surface: #13172f;
+  --ae-surface-raised: #1b1e3c;
+  --ae-surface-soft: #222341;
+  --ae-border: #7c7edf66;
+  --ae-border-muted: #7c7edf2e;
+  --ae-text: #eef3f8;
+  --ae-text-muted: #a2b4cb;
+  --ae-primary: #4a3ac1;
+  --ae-primary-hover: #4646b5;
+  --ae-blue: #4465ee;
+  --ae-violet: #6d12e3;
+  --ae-lavender: #a6a7ff;
+  --ae-green: #17b14e;
+  --ae-danger: #e26a62;
+  --ae-warning: #f59e0b;
+  --ae-action-soft: rgba(74, 58, 193, 0.2);
+  --ae-action-hover: #4646b5;
+  --ae-gradient-primary: linear-gradient(90deg, #4465ee, #6d12e3);
+  --ae-shadow-card: 0 18px 50px rgba(0, 0, 0, 0.28);
+  --ae-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  color-scheme: dark;
+}
+
+@supports (color: oklch(0 0 0)) {
+  .aecode-app {
+    --ae-action-soft: color-mix(in oklch, var(--ae-primary) 20%, transparent);
+    --ae-action-hover: color-mix(in oklch, var(--ae-primary) 88%, white);
+  }
+}
