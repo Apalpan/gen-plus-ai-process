@@ -4,30 +4,42 @@
    alpha support: rgb(var(--token) / <alpha-value>). Plain color vars feed
    component classes and inline styles. */
 :root {
+  /* Verified GEN+ brand sources */
+  --gen-navy: #0e2a6b;
+  --gen-blue: #2165ff;
+  --gen-blue-light: #4d84ff;
+  --gen-blue-ice: #e9f0ff;
+
   /* App surfaces (RGB triplets for Tailwind ink-* scale) */
-  --ink-900: 237 242 252; /* app background */
+  --ink-900: 247 249 253; /* app background */
   --ink-850: 255 255 255; /* secondary surface */
-  --ink-800: 248 250 255; /* overlay */
+  --ink-800: 244 247 252; /* overlay */
   --ink-700: 255 255 255; /* raised / cards */
 
   /* Foreground (overrides Tailwind `white`) and brand light shades */
-  --fg: 9 21 46;
-  --brand-100: 30 92 232;
-  --brand-200: 23 72 181;
-  --brand-300: 23 72 181;
+  --fg: 14 42 107;
+  --brand-100: 14 42 107;
+  --brand-200: 27 87 223;
+  --brand-300: 33 101 255;
 
   /* Plain color vars */
-  --gen-bg: #eef3ff;
+  --gen-bg: #f7f9fd;
   --surface-grad: #ffffff;
   --panel-grad: #ffffff;
   --node-base: #ffffff;
+  --gen-overlay: #ffffff;
+  --gen-raised: #f4f7fc;
+  --gen-blue-pale: #0e2a6b;
 
-  --gen-text: #091530;
-  --gen-text-secondary: rgba(9, 21, 48, 0.74);
-  --gen-text-muted: rgba(9, 21, 48, 0.52);
+  --gen-text: #0e2a6b;
+  --gen-text-secondary: #3b5070;
+  --gen-text-muted: #5b6c87;
 
-  --gen-border: rgba(16, 49, 124, 0.16);
-  --gen-border-strong: rgba(16, 49, 124, 0.3);
+  --gen-border: #dce5f2;
+  --gen-border-strong: #b9cae2;
+  --gen-action: var(--gen-blue);
+  --gen-action-hover: #1b57df;
+  --gen-action-soft: rgba(33, 101, 255, 0.12);
 
   /* Accents (theme-invariant) */
   --gen-amber: #d97706;
@@ -42,6 +54,13 @@
   --gen-ease-panel: cubic-bezier(0.4, 0, 0.2, 1);
 
   color-scheme: light;
+}
+
+@supports (color: oklch(0 0 0)) {
+  :root {
+    --gen-action-hover: color-mix(in oklch, var(--gen-action) 88%, black);
+    --gen-action-soft: color-mix(in oklch, var(--gen-action) 12%, transparent);
+  }
 }
 
 .dark {
@@ -59,6 +78,9 @@
   --surface-grad: linear-gradient(180deg, rgba(10, 36, 76, 0.55) 0%, rgba(6, 20, 42, 0.65) 100%);
   --panel-grad: linear-gradient(180deg, rgba(7, 26, 54, 0.92) 0%, rgba(4, 15, 32, 0.96) 100%);
   --node-base: #0a244c;
+  --gen-overlay: #071a36;
+  --gen-raised: #0a244c;
+  --gen-blue-pale: #e9f0ff;
 
   --gen-text: #ffffff;
   --gen-text-secondary: rgba(255, 255, 255, 0.78);

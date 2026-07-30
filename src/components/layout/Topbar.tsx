@@ -41,10 +41,24 @@ export function Topbar() {
       <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Cambiar tema" title="Tema claro/oscuro">
         {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </Button>
-      <Button variant="secondary" size="sm" onClick={save} leftIcon={saved ? <Check size={16} /> : <Save size={16} />}>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={save}
+        leftIcon={saved ? <Check size={16} /> : <Save size={16} />}
+        aria-label={saved ? 'Ruta guardada' : 'Guardar ruta'}
+        title={saved ? 'Ruta guardada' : 'Guardar ruta'}
+      >
         <span className="hidden sm:inline">{saved ? 'Guardado' : 'Guardar'}</span>
       </Button>
-      <Button variant="primary" size="sm" onClick={() => setSection('implement')} leftIcon={<Download size={16} />}>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => setSection('implement')}
+        leftIcon={<Download size={16} />}
+        aria-label="Exportar ruta"
+        title="Exportar ruta"
+      >
         <span className="hidden sm:inline">Exportar</span>
       </Button>
       <div className="mx-0.5 h-6 w-px bg-[var(--gen-border)]" />

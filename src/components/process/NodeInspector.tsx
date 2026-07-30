@@ -13,7 +13,7 @@ const NODE_TYPES: NodeType[] = ['start', 'end', 'activity', 'decision', 'documen
 const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical'];
 const VARIABILITY = ['baja', 'media', 'alta'] as const;
 
-export function NodeInspector({ node }: { node: ProcessNodeData }) {
+export function NodeInspector({ node, onClose }: { node: ProcessNodeData; onClose?: () => void }) {
   const patchNode = useProcessStore((s) => s.patchNode);
   const deleteNode = useProcessStore((s) => s.deleteNode);
   const selectNode = useProcessStore((s) => s.selectNode);
@@ -32,7 +32,15 @@ export function NodeInspector({ node }: { node: ProcessNodeData }) {
             {meta.label}
           </span>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => selectNode(null)} aria-label="Cerrar inspector">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            selectNode(null);
+            onClose?.();
+          }}
+          aria-label="Cerrar inspector"
+        >
           <X size={18} />
         </Button>
       </div>

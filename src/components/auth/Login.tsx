@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, LogIn, Lock, User } from 'lucide-react';
+import { ArrowRight, LogIn, Lock, Route, User } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { Logo } from '../brand/Logo';
 import { Button } from '../ui/Button';
@@ -8,6 +8,7 @@ import { Button } from '../ui/Button';
 /** Puerta de acceso simple (demo): cualquier usuario + clave no vacía entra. */
 export function Login() {
   const login = useProcessStore((s) => s.login);
+  const loadTemplate = useProcessStore((s) => s.loadTemplate);
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [err, setErr] = useState('');
@@ -20,6 +21,11 @@ export function Login() {
       return;
     }
     login(u);
+  };
+
+  const openGuestRoute = () => {
+    login('Invitado');
+    loadTemplate('tpl_ai_learning_route');
   };
 
   return (
@@ -48,7 +54,6 @@ export function Login() {
             <input
               value={user}
               onChange={(e) => setUser(e.target.value)}
-              autoFocus
               placeholder="tu.nombre"
               className="min-h-[44px] w-full rounded-btn border border-[var(--gen-border)] bg-ink-900/60 pl-9 pr-3 text-sm text-white outline-none transition-all placeholder:text-[var(--gen-text-muted)] hover:border-brand-400/40 focus:border-brand-400/70 focus-visible:shadow-focus"
             />
@@ -70,7 +75,15 @@ export function Login() {
           <Button type="submit" size="lg" className="mt-3 w-full" leftIcon={<LogIn size={18} />} rightIcon={<ArrowRight size={18} />}>
             Entrar
           </Button>
-          <p className="mt-3 text-center text-[11px] gen-text-muted">Demo · cualquier clave funciona. Tus procesos se guardan en este navegador.</p>
+          <div className="my-3 flex items-center gap-2" aria-hidden="true">
+            <span className="h-px flex-1 bg-[var(--gen-border)]" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider gen-text-muted">o explora</span>
+            <span className="h-px flex-1 bg-[var(--gen-border)]" />
+          </div>
+          <Button type="button" variant="secondary" size="lg" className="w-full" onClick={openGuestRoute} leftIcon={<Route size={18} />}>
+            Abrir Ruta IA como invitado
+          </Button>
+          <p className="mt-3 text-center text-[11px] gen-text-muted">Demo local · 27 clusters que sintetizan 118 módulos fuente en 8 hitos. Tus cambios se guardan en este navegador.</p>
         </form>
       </motion.div>
     </div>
