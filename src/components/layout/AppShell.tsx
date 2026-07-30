@@ -21,7 +21,7 @@ function SeamToggle({ side, open, onClick }: { side: 'left' | 'right'; open: boo
     <button
       onClick={onClick}
       title={open ? 'Ocultar panel' : 'Mostrar panel'}
-      className={`absolute top-1/2 z-30 flex h-12 w-4 -translate-y-1/2 items-center justify-center rounded-md border border-[var(--gen-border)] bg-ink-850/90 text-brand-300 shadow-elevated backdrop-blur transition-colors hover:bg-ink-800 ${
+      className={`absolute top-1/2 z-30 hidden h-12 w-4 -translate-y-1/2 items-center justify-center rounded-md border border-[var(--gen-border)] bg-ink-850/90 text-brand-300 shadow-elevated backdrop-blur transition-colors hover:bg-ink-800 md:flex ${
         side === 'left' ? 'left-0' : 'right-0'
       }`}
     >
@@ -32,20 +32,24 @@ function SeamToggle({ side, open, onClick }: { side: 'left' | 'right'; open: boo
 
 export function AppShell() {
   const section = useProcessStore((s) => s.section);
+  const process = useProcessStore((s) => s.process);
   const leftOpen = useProcessStore((s) => s.leftPanelOpen);
   const rightOpen = useProcessStore((s) => s.rightPanelOpen);
   const togglePanel = useProcessStore((s) => s.togglePanel);
   const fullWidth = FULL_WIDTH.includes(section);
   const showSteps = FLOW_SECTIONS.includes(section);
+  const isLearningRoute = process.tags.includes('ruta-ia');
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-ink-900 text-white">
       <Topbar />
       <div className="flex min-h-0 flex-1">
-        <Sidebar />
+        <div className={isLearningRoute ? 'hidden md:contents' : 'contents'}>
+          <Sidebar />
+        </div>
         {fullWidth ? (
           <main className="flex min-w-0 flex-1 flex-col">
-            {showSteps && <StepBar />}
+            {showSteps && !isLearningRoute && <StepBar />}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {section === 'dashboard' && <Dashboard />}
               {section === 'processes' && <ProcessLibraryView />}
@@ -55,20 +59,34 @@ export function AppShell() {
           </main>
         ) : (
           <>
-            {leftOpen && <LeftPanel />}
+            {leftOpen && !isLearningRoute && (
+              <div className="hidden md:contents">
+                <LeftPanel />
+              </div>
+            )}
             <main className="relative flex min-w-0 flex-1 flex-col">
-              {showSteps && <StepBar />}
+              {showSteps && !isLearningRoute && <StepBar />}
               <div className="relative min-h-0 flex-1">
                 <ProcessCanvas />
-                <SeamToggle side="left" open={leftOpen} onClick={() => togglePanel('left')} />
-                <SeamToggle side="right" open={rightOpen} onClick={() => togglePanel('right')} />
+                {!isLearningRoute && (
+                  <>
+                    <SeamToggle side="left" open={leftOpen} onClick={() => togglePanel('left')} />
+                    <SeamToggle side="right" open={rightOpen} onClick={() => togglePanel('right')} />
+                  </>
+                )}
               </div>
             </main>
-            {rightOpen && <RightPanel />}
+            {rightOpen && !isLearningRoute && (
+              <div className="hidden md:contents">
+                <RightPanel />
+              </div>
+            )}
           </>
         )}
       </div>
-      <BottomBar />
+      <div className={isLearningRoute ? 'hidden md:block' : 'contents'}>
+        <BottomBar />
+      </div>
     </div>
   );
 }

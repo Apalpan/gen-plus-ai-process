@@ -11,6 +11,7 @@ import {
   makeRisk,
   nowIso,
 } from '../lib/processSchema';
+import { buildAILearningRoute } from './aiLearningRoute';
 
 export interface ProcessTemplate {
   id: string;
@@ -1162,6 +1163,7 @@ export function buildLookahead(): ProcessMap {
 }
 
 export const templates: ProcessTemplate[] = [
+  { id: 'tpl_ai_learning_route', name: 'Ruta IA · Diplomado AEC', description: '27 clusters que sintetizan 118 módulos fuente en 8 hitos: tronco, electivos y Capstone.', kind: 'academico', icon: 'Route', build: buildAILearningRoute },
   { id: 'tpl_coordinacion', name: 'Coordinación de equipo / proyecto', description: 'Flujo de coordinación de extremo a extremo con responsables y SLA.', kind: 'operaciones', icon: 'Users', build: buildCoordinacion },
   { id: 'tpl_rfi', name: 'Gestión de RFI en obra', description: 'RFI con cola de espera, cycle time y cuello de botella (PPI).', kind: 'obra', icon: 'HelpCircle', build: buildRFI },
   { id: 'tpl_clash', name: 'Clash detection / coordinación BIM', description: 'De la federación a la resolución de interferencias críticas.', kind: 'bim_via', icon: 'Boxes', build: buildClash },
@@ -1169,7 +1171,6 @@ export const templates: ProcessTemplate[] = [
   { id: 'tpl_lookahead', name: 'Lookahead semanal (Last Planner)', description: 'Liberar restricciones, comprometer trabajo y medir PPC.', kind: 'ppm', icon: 'CalendarRange', build: buildLookahead },
   { id: 'tpl_obra_example', name: 'Consultas técnicas en obra', description: 'RFI/CDE de extremo a extremo con trazabilidad y métricas.', kind: 'obra', icon: 'HardHat', build: buildObra },
   { id: 'tpl_finanzas', name: 'Control de pagos y cobranza', description: 'Validación, aprobación, ejecución y conciliación financiera.', kind: 'finanzas', icon: 'Wallet', build: buildFinanzas },
-  { id: 'tpl_obra_example', name: 'Consultas técnicas en obra', description: 'RFI/CDE de extremo a extremo con trazabilidad y métricas.', kind: 'obra', icon: 'HardHat', build: buildObra },
   { id: 'tpl_vdc', name: 'Matriz VDC / VIA / ICE / PPM', description: 'Cadena causal de objetivos y factores controlables.', kind: 'bim_via', icon: 'Network', build: buildVDC },
   { id: 'tpl_comercial', name: 'Proceso comercial B2B', description: 'Pipeline de lead a renovación con métricas.', kind: 'comercial', icon: 'TrendingUp', build: buildComercial },
   { id: 'tpl_academico', name: 'Coordinación académica AECODE', description: 'De diseño de programa a certificación y retención.', kind: 'academico', icon: 'GraduationCap', build: buildAcademico },

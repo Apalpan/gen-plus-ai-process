@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Workflow, Gauge, PenLine, Rocket, ShieldCheck, ArrowRight, Play } from 'lucide-react';
+import { Sparkles, Workflow, Gauge, PenLine, Rocket, ShieldCheck, ArrowRight, Play, Route } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useProcessStore } from '../../store/useProcessStore';
 import { Logo } from '../brand/Logo';
@@ -106,6 +106,7 @@ export function Home() {
     setSection('capture');
     setView('app');
   };
+  const openLearningRoute = () => loadTemplate('tpl_ai_learning_route');
 
   return (
     <div className="dark relative min-h-screen w-screen overflow-y-auto bg-ink-900 text-white">
@@ -165,8 +166,8 @@ export function Home() {
               <Button size="lg" onClick={start} leftIcon={<Sparkles size={18} />} rightIcon={<ArrowRight size={18} />}>
                 Mapear mi proceso
               </Button>
-              <Button size="lg" variant="secondary" onClick={() => loadTemplate('tpl_coordinacion')}>
-                Probar un ejemplo
+              <Button size="lg" variant="secondary" onClick={openLearningRoute} leftIcon={<Route size={18} />}>
+                Explorar Ruta IA
               </Button>
             </motion.div>
 
@@ -178,7 +179,7 @@ export function Home() {
             >
               <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-accent-green" /> Sin tarjeta</span>
               <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-brand-300" /> 2D · 3D · Básico</span>
-              <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-accent-violet" /> Exporta a Markdown, JSON, n8n</span>
+              <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-brand-400" /> Ruta IA: 27 clusters · fuente de 118 módulos</span>
             </motion.div>
           </div>
 

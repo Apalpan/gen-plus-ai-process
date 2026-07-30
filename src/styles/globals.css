@@ -108,8 +108,8 @@
   background: var(--gen-overlay);
   border-bottom: 1px solid var(--gen-border);
   color: var(--gen-blue-pale);
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
 }
 .react-flow__controls-button:hover {
   background: var(--gen-raised);
@@ -150,7 +150,8 @@
 }
 .react-flow__node:focus,
 .react-flow__node:focus-visible {
-  outline: none;
+  outline: 3px solid var(--gen-blue);
+  outline-offset: 4px;
 }
 
 /* ---- Vista 3D (presentación, solo lectura) ---- */
@@ -166,4 +167,23 @@
 .gen-canvas-basic .react-flow {
   transform: none;
   transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
