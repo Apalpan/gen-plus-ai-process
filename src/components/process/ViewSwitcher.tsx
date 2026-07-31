@@ -23,6 +23,7 @@ export function ViewSwitcher() {
             key={m.id}
             onClick={() => setViewMode(m.id)}
             title={`Vista ${m.label}`}
+            aria-label={`Vista ${m.label}`}
             className={cn(
               'flex h-8 items-center gap-1.5 rounded-btn px-2.5 text-[12px] font-semibold transition-all duration-150',
               active ? 'bg-brand-500 text-oncolor shadow-[0_4px_12px_rgba(33,101,255,0.35)]' : 'text-brand-100 hover:bg-white/[0.08]',
