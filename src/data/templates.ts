@@ -11,7 +11,6 @@ import {
   makeRisk,
   nowIso,
 } from '../lib/processSchema';
-import { buildAILearningRoute } from './aiLearningRoute';
 
 export interface ProcessTemplate {
   id: string;
@@ -1163,7 +1162,6 @@ export function buildLookahead(): ProcessMap {
 }
 
 export const templates: ProcessTemplate[] = [
-  { id: 'tpl_ai_learning_route', name: 'Ruta IA · Diplomado AEC', description: '27 clusters que sintetizan 118 módulos fuente en 8 hitos: tronco, electivos y Capstone.', kind: 'academico', icon: 'Route', build: buildAILearningRoute },
   { id: 'tpl_coordinacion', name: 'Coordinación de equipo / proyecto', description: 'Flujo de coordinación de extremo a extremo con responsables y SLA.', kind: 'operaciones', icon: 'Users', build: buildCoordinacion },
   { id: 'tpl_rfi', name: 'Gestión de RFI en obra', description: 'RFI con cola de espera, cycle time y cuello de botella (PPI).', kind: 'obra', icon: 'HelpCircle', build: buildRFI },
   { id: 'tpl_clash', name: 'Clash detection / coordinación BIM', description: 'De la federación a la resolución de interferencias críticas.', kind: 'bim_via', icon: 'Boxes', build: buildClash },

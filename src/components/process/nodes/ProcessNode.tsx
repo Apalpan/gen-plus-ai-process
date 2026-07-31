@@ -42,7 +42,6 @@ const ICONS: Partial<Record<NodeType, LucideIcon>> = {
 interface ProcessNodeFlowData {
   node: ProcessNodeData;
   process: ProcessMap;
-  onInspect?: () => void;
 }
 
 function ProcessNodeImpl({ data, selected }: NodeProps<ProcessNodeFlowData>) {
@@ -50,7 +49,6 @@ function ProcessNodeImpl({ data, selected }: NodeProps<ProcessNodeFlowData>) {
   const meta = NODE_TYPE_META[n.type];
   const Icon = ICONS[n.type] ?? Activity;
   const deleteNode = useProcessStore((s) => s.deleteNode);
-  const selectNode = useProcessStore((s) => s.selectNode);
 
   const metricCount = n.metricIds?.length ?? 0;
   const riskCount = n.riskIds?.length ?? 0;
@@ -58,10 +56,6 @@ function ProcessNodeImpl({ data, selected }: NodeProps<ProcessNodeFlowData>) {
 
   return (
     <div
-      onPointerDownCapture={() => {
-        selectNode(n.id);
-        data.onInspect?.();
-      }}
       className={cn(
         'group relative w-[200px] select-none rounded-card border bg-ink-700/80 backdrop-blur-sm transition-all duration-150 ease-out',
         'hover:-translate-y-0.5 hover:shadow-glow',
@@ -121,19 +115,6 @@ function ProcessNodeImpl({ data, selected }: NodeProps<ProcessNodeFlowData>) {
             {docCount > 0 && <span className="rounded-full bg-accent-cyan/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent-cyan">{docCount} out</span>}
           </div>
         )}
-
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            selectNode(n.id);
-            data.onInspect?.();
-          }}
-          className="nodrag mt-2 min-h-8 w-full rounded-btn border border-[var(--gen-border)] bg-white/[0.025] text-[10.5px] font-semibold text-brand-200 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 focus-visible:shadow-focus"
-          aria-label={`Abrir detalle de ${n.title}`}
-        >
-          Ver detalle
-        </button>
       </div>
 
       {/* delete */}

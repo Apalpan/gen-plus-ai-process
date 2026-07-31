@@ -11,7 +11,7 @@ export function LeftPanel() {
   const section = useProcessStore((s) => s.section);
 
   return (
-    <div className="flex w-[340px] shrink-0 flex-col overflow-hidden border-r border-[var(--gen-border)] bg-ink-850/50">
+    <div className="gen-side-panel gen-side-panel-left flex w-[340px] shrink-0 flex-col overflow-hidden border-r border-[var(--gen-border)] bg-ink-850/95">
       {section === 'map' && (
         <div className="flex h-full flex-col">
           <div className="border-b border-[var(--gen-border)] px-4 py-3">

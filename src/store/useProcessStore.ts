@@ -37,13 +37,6 @@ import { generateProcessFromAI } from '../ai/ProcessGenerator';
 import { runCopilot } from '../ai/copilot';
 import { storage } from '../lib/storage';
 import { emptyLLMConfig, type Integration, type LLMConfig } from '../ai/llm';
-import type {
-  EvidenceDraft,
-  LearnerProgress,
-  LearningRouteView,
-  LearningViewport,
-} from '../types/learning';
-import { aecodeF3Route, initialLearnerProgress } from '../data/aecodeF3Route';
 
 export type View = 'home' | 'app';
 
@@ -92,7 +85,6 @@ interface ProcessState {
   llmConfig: LLMConfig;
   integrations: Integration[];
   library: SavedProcess[];
-  learningProgress: LearnerProgress;
 
   // derived
   health: () => HealthReport;
@@ -160,59 +152,9 @@ interface ProcessState {
 
   // copilot
   sendCopilot: (command: string) => void;
-
-  // AECODE F3 learning route demo
-  setLearningView: (view: LearningRouteView) => void;
-  selectLearningItem: (
-    selection: Partial<
-      Pick<
-        LearnerProgress,
-        | 'selectedLevelId'
-        | 'selectedCourseId'
-        | 'selectedModuleId'
-        | 'selectedCapsuleId'
-        | 'activeSkillId'
-      >
-    >,
-  ) => void;
-  startLearningCapsule: (id: string) => void;
-  completeLearningCapsule: (id: string) => void;
-  completeLearningPractice: () => void;
-  updateLearningEvidence: (patch: Partial<EvidenceDraft>) => void;
-  saveLearningEvidenceDraft: () => void;
-  submitLearningEvidence: () => void;
-  setLearningNodePosition: (id: string, position: XY) => void;
-  setLearningViewport: (viewport: LearningViewport) => void;
-  resetLearningDemo: () => void;
 }
 
-const ACTIVE_LEARNING_KEY = 'active-learning.v1';
-const LEARNING_PROGRESS_KEY = 'learning-progress.v1';
-
-const storedLearningProgress = storage.read<LearnerProgress | null>(LEARNING_PROGRESS_KEY, null);
-const initialLearningState =
-  storedLearningProgress?.schemaVersion === 1 &&
-  storedLearningProgress.routeId === aecodeF3Route.id
-    ? storedLearningProgress
-    : initialLearnerProgress;
-
-const persistLearningProgress = (progress: LearnerProgress) => {
-  storage.write(LEARNING_PROGRESS_KEY, progress);
-  return progress;
-};
-
-const storedActiveLearning = storage.read<{ schemaVersion: 1; process: ProcessMap } | null>(
-  ACTIVE_LEARNING_KEY,
-  null,
-);
-
 const initialProcess = ((): ProcessMap => {
-  if (
-    storedActiveLearning?.schemaVersion === 1 &&
-    storedActiveLearning.process.tags.includes('ruta-ia')
-  ) {
-    return storedActiveLearning.process;
-  }
   const p = buildObra();
   return { ...p, nodes: autoLayout(p) };
 })();
@@ -237,8 +179,8 @@ const initialLibrary = ((): SavedProcess[] => {
 })();
 
 export const useProcessStore = create<ProcessState>((set, get) => ({
-  view: storedActiveLearning ? 'app' : 'home',
-  section: storedActiveLearning ? 'map' : 'dashboard',
+  view: 'home',
+  section: 'dashboard',
   theme: initialTheme,
   user: storage.read<string | null>('user', null),
   process: initialProcess,
@@ -251,7 +193,6 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   llmConfig: storage.read<LLMConfig>('llm', emptyLLMConfig()),
   integrations: storage.read<Integration[]>('integrations', []),
   library: initialLibrary,
-  learningProgress: initialLearningState,
   chat: [
     {
       id: 'welcome',
@@ -263,10 +204,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
 
   health: () => runHealthCheck(get().process),
 
-  setView: (v) => {
-    if (v === 'home') storage.remove(ACTIVE_LEARNING_KEY);
-    set({ view: v });
-  },
+  setView: (v) => set({ view: v }),
   setSection: (s) => set({ section: s }),
   toggleTheme: () =>
     set((st) => {
@@ -279,35 +217,21 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
     }),
   selectNode: (id) => set({ selectedNodeId: id }),
 
-  loadProcess: (p, opts = { relayout: true }) => {
-    const isLearningRoute = p.tags.includes('ruta-ia');
-    const process = opts.relayout && !isLearningRoute ? { ...p, nodes: autoLayout(p) } : p;
-    if (isLearningRoute) {
-      storage.write(ACTIVE_LEARNING_KEY, { schemaVersion: 1, process });
-    } else {
-      storage.remove(ACTIVE_LEARNING_KEY);
-    }
-    set({ process, selectedNodeId: null });
-  },
+  loadProcess: (p, opts = { relayout: true }) =>
+    set({
+      process: opts.relayout ? { ...p, nodes: autoLayout(p) } : p,
+      selectedNodeId: null,
+    }),
 
   loadTemplate: (id) => {
     const tpl = getTemplateById(id);
     if (!tpl) return;
     const p = tpl.build();
-    const isLearningRoute = p.tags.includes('ruta-ia');
-    const process = isLearningRoute ? p : { ...p, nodes: autoLayout(p) };
-    if (isLearningRoute) {
-      storage.write(ACTIVE_LEARNING_KEY, { schemaVersion: 1, process });
-      persistLearningProgress(get().learningProgress);
-    } else {
-      storage.remove(ACTIVE_LEARNING_KEY);
-    }
-    set({ process, selectedNodeId: null, section: 'map', view: 'app' });
+    set({ process: { ...p, nodes: autoLayout(p) }, selectedNodeId: null, section: 'map', view: 'app' });
   },
 
   newBlank: () => {
     const p = emptyProcess();
-    storage.remove(ACTIVE_LEARNING_KEY);
     set({ process: p, selectedNodeId: null, view: 'app', section: 'capture' });
   },
 
@@ -318,7 +242,6 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
     }));
     try {
       const p = await generateProcessFromAI(prompt, get().llmConfig);
-      storage.remove(ACTIVE_LEARNING_KEY);
       set({
         process: { ...p, nodes: autoLayout(p) },
         selectedNodeId: null,
@@ -616,12 +539,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
     set((st) => {
       const item = st.library.find((s) => s.id === id);
       if (!item) return st;
-      if (item.process.tags.includes('ruta-ia')) {
-        storage.write(ACTIVE_LEARNING_KEY, { schemaVersion: 1, process: item.process });
-      } else {
-        storage.remove(ACTIVE_LEARNING_KEY);
-      }
-      return { process: item.process, selectedNodeId: null, view: 'app', section: 'map' };
+      return { process: { ...item.process, nodes: autoLayout(item.process) }, selectedNodeId: null, view: 'app', section: 'map' };
     }),
   renameLibraryItem: (id, title) =>
     set((st) => {
@@ -704,124 +622,4 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
       chat: [...st.chat, { id: 'a' + Date.now(), role: 'assistant', text: result.message, code: result.code }],
     }));
   },
-
-  setLearningView: (view) =>
-    set((st) => {
-      const learningProgress = persistLearningProgress({ ...st.learningProgress, view });
-      return { learningProgress };
-    }),
-
-  selectLearningItem: (selection) =>
-    set((st) => {
-      const learningProgress = persistLearningProgress({ ...st.learningProgress, ...selection });
-      return { learningProgress };
-    }),
-
-  startLearningCapsule: (id) =>
-    set((st) => {
-      const startedCapsuleIds = st.learningProgress.startedCapsuleIds.includes(id)
-        ? st.learningProgress.startedCapsuleIds
-        : [...st.learningProgress.startedCapsuleIds, id];
-      const learningProgress = persistLearningProgress({
-        ...st.learningProgress,
-        selectedCapsuleId: id,
-        startedCapsuleIds,
-        skillStatus: st.learningProgress.skillStatus === 'available' ? 'active' : st.learningProgress.skillStatus,
-      });
-      return { learningProgress };
-    }),
-
-  completeLearningCapsule: (id) =>
-    set((st) => {
-      const completedCapsuleIds = st.learningProgress.completedCapsuleIds.includes(id)
-        ? st.learningProgress.completedCapsuleIds
-        : [...st.learningProgress.completedCapsuleIds, id];
-      const currentCapsule = aecodeF3Route.capsules.find((capsule) => capsule.id === id);
-      const nextCapsule = aecodeF3Route.capsules.find(
-        (capsule) => capsule.order === (currentCapsule?.order ?? 0) + 1,
-      );
-      const learningProgress = persistLearningProgress({
-        ...st.learningProgress,
-        completedCapsuleIds,
-        selectedCapsuleId: nextCapsule?.id ?? id,
-        skillStatus: 'active',
-      });
-      return { learningProgress };
-    }),
-
-  completeLearningPractice: () =>
-    set((st) => {
-      const allCapsulesComplete = aecodeF3Route.capsules.every((capsule) =>
-        st.learningProgress.completedCapsuleIds.includes(capsule.id),
-      );
-      if (!allCapsulesComplete) return st;
-      const learningProgress = persistLearningProgress({
-        ...st.learningProgress,
-        practiceCompleted: true,
-        skillStatus: 'active',
-      });
-      return { learningProgress };
-    }),
-
-  updateLearningEvidence: (patch) =>
-    set((st) => {
-      if (st.learningProgress.skillStatus === 'submitted') return st;
-      const learningProgress = persistLearningProgress({
-        ...st.learningProgress,
-        evidenceDraft: { ...st.learningProgress.evidenceDraft, ...patch },
-      });
-      return { learningProgress };
-    }),
-
-  saveLearningEvidenceDraft: () =>
-    set((st) => {
-      if (!st.learningProgress.practiceCompleted || st.learningProgress.skillStatus === 'submitted') return st;
-      const learningProgress = persistLearningProgress({
-        ...st.learningProgress,
-        skillStatus: 'evidence-draft',
-      });
-      return { learningProgress };
-    }),
-
-  submitLearningEvidence: () =>
-    set((st) => {
-      const evidence = aecodeF3Route.evidences[0];
-      const complete =
-        st.learningProgress.practiceCompleted &&
-        evidence.requiredFields.every(
-          (field) => st.learningProgress.evidenceDraft[field].trim().length > 0,
-        );
-      if (!complete || st.learningProgress.skillStatus === 'submitted') return st;
-      const learningProgress = persistLearningProgress({
-        ...st.learningProgress,
-        skillStatus: 'submitted',
-        evidenceSubmittedAt: nowIso(),
-      });
-      return { learningProgress };
-    }),
-
-  setLearningNodePosition: (id, position) =>
-    set((st) => {
-      const learningProgress = persistLearningProgress({
-        ...st.learningProgress,
-        mapPositions: { ...st.learningProgress.mapPositions, [id]: position },
-      });
-      return { learningProgress };
-    }),
-
-  setLearningViewport: (mapViewport) =>
-    set((st) => {
-      const learningProgress = persistLearningProgress({ ...st.learningProgress, mapViewport });
-      return { learningProgress };
-    }),
-
-  resetLearningDemo: () =>
-    set((st) => {
-      const preservedView = st.learningProgress.view;
-      const learningProgress = persistLearningProgress({
-        ...initialLearnerProgress,
-        view: preservedView,
-      });
-      return { learningProgress };
-    }),
 }));

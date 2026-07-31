@@ -45,9 +45,8 @@ export function Topbar() {
         variant="secondary"
         size="sm"
         onClick={save}
+        aria-label={saved ? 'Proceso guardado' : 'Guardar proceso'}
         leftIcon={saved ? <Check size={16} /> : <Save size={16} />}
-        aria-label={saved ? 'Ruta guardada' : 'Guardar ruta'}
-        title={saved ? 'Ruta guardada' : 'Guardar ruta'}
       >
         <span className="hidden sm:inline">{saved ? 'Guardado' : 'Guardar'}</span>
       </Button>
@@ -55,9 +54,8 @@ export function Topbar() {
         variant="primary"
         size="sm"
         onClick={() => setSection('implement')}
+        aria-label="Exportar proceso"
         leftIcon={<Download size={16} />}
-        aria-label="Exportar ruta"
-        title="Exportar ruta"
       >
         <span className="hidden sm:inline">Exportar</span>
       </Button>

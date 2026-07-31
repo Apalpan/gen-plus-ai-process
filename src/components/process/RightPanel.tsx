@@ -8,7 +8,7 @@ export function RightPanel() {
   const node = useProcessStore((s) => s.process.nodes.find((n) => n.id === selectedNodeId));
 
   return (
-    <aside className="flex w-[340px] shrink-0 flex-col border-l border-[var(--gen-border)] bg-ink-850/50">
+    <aside className="gen-side-panel gen-side-panel-right flex w-[340px] shrink-0 flex-col border-l border-[var(--gen-border)] bg-ink-850/95">
       {node ? (
         <NodeInspector node={node} />
       ) : (
