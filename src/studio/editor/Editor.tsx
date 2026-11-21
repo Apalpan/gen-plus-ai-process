@@ -1137,10 +1137,11 @@ function Inspector({
   onDelete: () => void;
 }) {
   const data = asStep(local(item));
+  const { canEdit, role } = useStudio();
   return (
     <div className="space-y-4">
       <p className="text-xs font-bold uppercase text-[#2165ff]">
-        Inspector · borrador local
+        {canEdit ? "Inspector · borrador local" : "Inspector · solo lectura"}
       </p>
       <Field
         label="Título"
@@ -1233,18 +1234,20 @@ function Inspector({
           </p>
         ))}
         <textarea
+          disabled={role === "reader"}
           value={comment}
           onChange={(event) => onComment(event.target.value)}
           placeholder="Comentar o pedir una acción"
           className="mt-2 w-full rounded-lg border border-[#dce5f2] p-2 text-sm"
         />
-        <button onClick={onAdd} className="btn-primary mt-2">
+        <button disabled={role === "reader"} onClick={onAdd} className="btn-primary mt-2">
           <Send size={14} />
           Publicar
         </button>
       </section>
       <button
         onClick={onDelete}
+        disabled={!canEdit}
         className="inline-flex items-center gap-1 text-sm font-semibold text-red-600"
       >
         <Trash2 size={15} />
@@ -1262,10 +1265,12 @@ function Field({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const { canEdit } = useStudio();
   return (
     <label className="block text-xs font-semibold text-[#5b6c87]">
       {label}
       <input
+        readOnly={!canEdit}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 w-full rounded-lg border border-[#dce5f2] p-2 text-sm"
@@ -1284,10 +1289,12 @@ function Select({
   onChange: (value: string) => void;
   items: { id: string; name: string }[];
 }) {
+  const { canEdit } = useStudio();
   return (
     <label className="block text-xs font-semibold text-[#5b6c87]">
       {label}
       <select
+        disabled={!canEdit}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 w-full rounded-lg border border-[#dce5f2] p-2 text-sm"
