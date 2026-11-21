@@ -33,3 +33,9 @@ Thumbs.db
 
 # Local browser QA artifacts
 .playwright-cli/
+server/data/*.sqlite*
+server/data/*.db*
+server/data/*.secret
+
+# Local verification evidence and handoff
+_ai/

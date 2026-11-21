@@ -1,16 +1,20 @@
 {
   "name": "gen-plus-ai-process",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "GEN+ AI Process — Transform vague ideas and conversations into clear, measurable, interactive process maps.",
   "author": "GEN+ Design",
   "license": "MIT",
   "scripts": {
-    "dev": "vite",
+    "studio": "node scripts/start-studio.mjs",
+    "api": "node server/index.mjs",
+    "dev": "node scripts/start-studio.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "start": "node server/index.mjs",
+    "test": "node server/tests/api.test.mjs && node scripts/check-domain.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",

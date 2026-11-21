@@ -1,4 +1,35 @@
-# GEN+ AI Process
+# GEN+ AI Process 2.0
+
+Mapeo colaborativo, gestión VDC y coordinación ICE en un mismo espacio. La v2 usa React Flow, un servidor Node y SQLite. Requiere Node.js 24.
+
+```sh
+npm ci
+npm run dev
+```
+
+Abre [AI Process local](http://127.0.0.1:5178). **Abrir demo local** crea un espacio privado con la cadena de prefabricados, dos cortes de ejemplo y una restricción ICE. Para trabajar con cuentas, cada miembro se registra y el propietario lo incorpora desde **Equipo y revisiones**. El acceso al espacio y el rol operativo del perfil se configuran por separado.
+
+**Recorrido del lote.** En Gerencial, abre un indicador para ver sus objetivos. En Interrelaciones VDC elige un factor y sigue su actividad o asunto ICE. En Sesiones ICE puedes preparar agenda, registrar una decisión en sesión, importar un acta, asignar responsable y verificar el cierre con evidencia. En Producción registra un nuevo corte para contrastar el resultado.
+
+El editor admite ocho plantillas, importación por copia y exportación. El editor histórico sigue disponible en [la vista clásica](http://127.0.0.1:5178/?legacy).
+
+### Ejecución y pruebas
+
+- `npm test` comprueba colaboración, permisos, cambios concurrentes, cortes VDC, ciencia de operaciones, plantillas e importación ICE.
+- `npm run build` valida TypeScript y genera el cliente de producción. Después, `npm start` sirve interfaz y API en [el mismo origen](http://127.0.0.1:8787).
+- Los asistentes usan Ollama en el equipo del servidor con `gemma3:1b` por defecto. `AI_PROCESS_MODEL` permite elegir otro modelo instalado. La interfaz identifica cuándo se empleó el motor de reglas.
+- Para conectar equipos distintos, configura en la infraestructura compartida un proxy HTTPS al servidor y `AI_PROCESS_TEAM_ORIGIN` con el origen externo exacto. El proxy conserva la cabecera Host. Guarda la base SQLite en un volumen persistente mediante `AI_PROCESS_DB_PATH`. La demo local escucha en loopback.
+
+Con el servidor local en marcha, las pruebas de navegador se reproducen con Python, Playwright y Chrome instalados.
+
+```sh
+python tests/browser/collaboration.py
+python tests/browser/vdc_workflow.py
+```
+
+La primera prueba modifica cinco actividades desde cinco sesiones independientes. La segunda registra un corte, consulta los dos dashboards y recorre el grafo hasta una decisión ICE. Las capturas y resultados se escriben bajo `AI_PROCESS_QA_DIR` o en un directorio temporal.
+
+## Editor clásico
 
 > Mapea procesos complejos desde ideas simples.
 
