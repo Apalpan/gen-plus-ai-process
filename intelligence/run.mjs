@@ -287,10 +287,12 @@ export async function runAnalysis({ entities, revision, userId, request }) {
       };
     }
     return { ...run, engine: result.engine, interpretation: message };
-  } catch {
+  } catch (error) {
     return {
       ...run,
-      limitation: "El modelo no respondió con una propuesta válida. Se aplicaron las reglas del proyecto.",
+      limitation: error?.code === "gateway_verification_required"
+        ? "Vercel requiere que el titular verifique el medio de pago para habilitar la IA generativa. Esta propuesta usa las reglas del proyecto."
+        : "El modelo no respondió con una propuesta válida. Se aplicaron las reglas del proyecto.",
     };
   } finally {
     active--;

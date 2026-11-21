@@ -1,6 +1,10 @@
 # GEN+ AI Process 2.0
 
-Mapeo colaborativo, gestión VDC y coordinación ICE en un mismo espacio. La v2 usa React Flow, un servidor Node y SQLite. Requiere Node.js 24.
+Mapeo colaborativo, gestión VDC y coordinación ICE en un mismo espacio. [Abrir la aplicación en Vercel](https://gen-plus-ai-process-v2.vercel.app/)
+
+Selecciona **Abrir demo** para recorrer el ejemplo de prefabricados en un espacio privado. Para reunir a tu equipo en un mismo mapa, cada integrante crea su cuenta y el propietario lo incorpora desde **Equipo y revisiones**.
+
+La v2 usa React Flow y Node.js 24, con SQLite en desarrollo y PostgreSQL para la persistencia en Vercel.
 
 ```sh
 npm ci

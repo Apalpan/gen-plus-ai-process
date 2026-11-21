@@ -27,7 +27,15 @@ export async function modelResponse(messages,schema) {
         ...(schema?{response_format:{type:"json_schema",json_schema:{name:"process_map",strict:true,schema}}}:{})
       })
     });
-    if (!response.ok) throw Error("Gateway indisponible");
+    if (!response.ok) {
+      const details = await response.json().catch(() => null);
+      if (response.status === 403 && details?.error?.type === "customer_verification_required") {
+        const error = new Error("El proveedor requiere verificar la cuenta de Vercel.");
+        error.code = "gateway_verification_required";
+        throw error;
+      }
+      throw Error("Gateway indisponible");
+    }
     return {engine:"Vercel AI Gateway · " + model,content:(await response.json()).choices?.[0]?.message?.content};
   }
   const model=process.env.AI_PROCESS_MODEL || "gemma3:1b";
