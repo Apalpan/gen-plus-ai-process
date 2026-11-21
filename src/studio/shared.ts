@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, type MutableRefObject } from "react";
 
 export type Entity = {
   id: string;
@@ -63,6 +63,7 @@ export type Studio = {
   canEdit: boolean;
   members: Member[];
   apply: (changes: Change[], description?: string) => Promise<boolean>;
+  flushMap: MutableRefObject<(() => Promise<boolean>) | null>;
   selection: string | null;
   select: (id: string | null) => void;
   navigate: (view: View, id?: string) => void;
@@ -90,11 +91,17 @@ export async function api<T = any>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
+  const payload = body === undefined ? undefined : JSON.stringify(body);
   const response = await fetch("/api" + path, {
     method,
     credentials: "same-origin",
     headers: body === undefined ? {} : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: payload,
+    keepalive:
+      method === "POST" &&
+      path.endsWith("/batch") &&
+      payload !== undefined &&
+      new Blob([payload]).size < 48 * 1024,
   });
   if (response.status === 204) return undefined as T;
   const data = await response

@@ -4,6 +4,7 @@ import ReactFlow, {
   Background,
   Controls,
   MarkerType,
+  Position,
   MiniMap,
   applyNodeChanges,
   type Connection,
@@ -77,6 +78,21 @@ const laneGeometry = (lanes: Entity[]) =>
       { top: 76 + index * 174, height: 162, nodeY: 96 + index * 174 },
     ]),
   );
+// PostgreSQL jsonb may return object keys in a different order from a saved draft.
+function sameValue(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== "object" || typeof right !== "object")
+    return false;
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+  const a = left as Record<string, unknown>;
+  const b = right as Record<string, unknown>;
+  const keys = Object.keys(a).filter((key) => a[key] !== undefined);
+  return (
+    keys.length ===
+      Object.keys(b).filter((key) => b[key] !== undefined).length &&
+    keys.every((key) => sameValue(a[key], b[key]))
+  );
+}
 function saveFile(name: string, content: string, type = "text/plain") {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement("a");
@@ -123,10 +139,23 @@ export function Editor() {
   const cacheKey = "ai-process-editor:" + user.id + ":" + board.id;
   const cached = useMemo(() => {
     try {
-      return JSON.parse(sessionStorage.getItem(cacheKey) || "null") as {
+      const saved = JSON.parse(sessionStorage.getItem(cacheKey) || "null") as {
         draft: Entity[];
         base: Entity[];
       } | null;
+      if (!saved) return null;
+      const byId = (items: Entity[]) =>
+        new Map(items.map((item) => [item.id, item.data]));
+      const base = byId(saved.base),
+        draft = byId(saved.draft),
+        confirmed = byId(remote);
+      // The server can acknowledge a batch while the browser is reloading.
+      const outstanding = [...new Set([...base.keys(), ...draft.keys()])].some(
+        (id) =>
+          !sameValue(base.get(id), draft.get(id)) &&
+          !sameValue(confirmed.get(id), draft.get(id)),
+      );
+      return outstanding ? saved : null;
     } catch {
       return null;
     }
@@ -140,7 +169,7 @@ export function Editor() {
   const [tombstones, setTombstones] = useState<Record<string, number>>({});
   const [dirty, setDirty] = useState(Boolean(cached));
   const [saving, setSaving] = useState(false);
-  const inFlight = useRef(false);
+  const inFlight = useRef<Promise<boolean> | null>(null);
   const editSerial = useRef(0);
   const [inspector, setInspector] = useState(() => window.innerWidth >= 1130);
   const [panelWidth, setPanelWidth] = useState(306);
@@ -377,16 +406,15 @@ export function Editor() {
   }
   const undo = () => travel(true),
     doRedo = () => travel(false);
-  const commit = async () => {
-    if (inFlight.current) return;
+  const persistDraft = async () => {
     const issues = validateMap(draft);
     if (issues.length) {
       notify(issues[0]);
-      return;
+      return false;
     }
     const baseById = new Map(baseDraft.map((item) => [item.id, item]));
     const draftById = new Map(draft.map((item) => [item.id, item]));
-    const changes: Change[] = draft
+    let changes: Change[] = draft
       .filter(
         (item) =>
           !baseById.has(item.id) ||
@@ -410,15 +438,21 @@ export function Editor() {
           expectedRev: item.rev,
         }),
       );
+    // A restored tab can already have delivered its last batch before reload.
+    const confirmed = new Map(remote.map((item) => [item.id, item]));
+    changes = changes.filter((c) => {
+      const current = confirmed.get(c.id);
+      if (c.remove) return Boolean(current);
+      return !current || !sameValue(current.data, c.data);
+    });
     if (!changes.length) {
+      sessionStorage.removeItem(cacheKey);
       setDirty(false);
-      return;
+      return true;
     }
     const serial = editSerial.current;
-    inFlight.current = true;
     setSaving(true);
     const ok = await apply(changes, "Borrador actualizado desde editor");
-    inFlight.current = false;
     setSaving(false);
     if (ok) {
       const deleted = changes
@@ -434,6 +468,7 @@ export function Editor() {
         return next;
       });
       if (serial === editSerial.current) {
+        sessionStorage.removeItem(cacheKey);
         setDirty(false);
       } else {
         const sent = new Map(changes.map((c) => [c.id, c]));
@@ -451,7 +486,21 @@ export function Editor() {
         "Cambios en borrador: la compartición automática se pausó para evitar una sobrescritura.",
       );
     }
+    return ok && serial === editSerial.current;
   };
+  const commit = () => {
+    if (inFlight.current) return inFlight.current;
+    inFlight.current = persistDraft().finally(() => {
+      inFlight.current = null;
+    });
+    return inFlight.current;
+  };
+  useEffect(() => {
+    studio.flushMap.current = dirty ? commit : null;
+    return () => {
+      studio.flushMap.current = null;
+    };
+  });
   useEffect(() => {
     if (!autoShare || !dirty || saving) return;
     const timer = window.setTimeout(() => void commit(), 1100);
@@ -622,6 +671,10 @@ export function Editor() {
           return {
             id: item.id,
             position: { x: data.x, y: geometry?.nodeY ?? data.y },
+            sourcePosition:
+              orientation === "horizontal" ? Position.Right : Position.Bottom,
+            targetPosition:
+              orientation === "horizontal" ? Position.Left : Position.Top,
             data: { label: <Card item={item} /> },
             className: `ed-process-node ed-node-${shape}`,
             style: {
@@ -632,9 +685,9 @@ export function Editor() {
             },
           };
         }),
-    [filter, mapLanes, selected, steps],
+    [filter, mapLanes, orientation, selected, steps],
   );
-  useEffect(() => setFlowNodes(nodes), [draft, filter, selected]);
+  useEffect(() => setFlowNodes(nodes), [nodes]);
   const flowEdges: Edge[] = edges.map((item) => {
     const data = asEdge(local(item));
     return {
@@ -714,7 +767,7 @@ export function Editor() {
           className="btn-primary"
         >
           <Save size={15} />
-          Guardar
+          {saving ? "Guardando…" : "Guardar"}
         </button>
         <button
           disabled={!history.length}
@@ -773,12 +826,6 @@ export function Editor() {
               }}
               className="ed-canvas relative h-full min-h-[520px] overflow-hidden rounded-xl border border-[#dce5f2] bg-[radial-gradient(circle_at_top,#e9f0ff,white_48%)]"
             >
-              <div className="ed-canvas-title">
-                <span>Mapa actual</span>
-                <small>
-                  Arrastra, conecta y selecciona para documentar cada paso
-                </small>
-              </div>
               <div className="absolute z-10 m-3">
                 <button
                   className="btn-secondary"
@@ -1218,33 +1265,49 @@ function Swimlanes({ lanes, steps }: { lanes: Entity[]; steps: Entity[] }) {
     Math.max(...positioned.map(({ data }) => data.x + 220), 920) + 135;
   const geometry = laneGeometry(lanes);
   return (
-    <div
-      className="ed-swimlanes"
-      aria-hidden="true"
-      style={{
-        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-      }}
-    >
-      {lanes.map((lane) => {
-        const band = geometry.get(lane.id)!;
-        return (
-          <div
+    <>
+      <div
+        className="ed-swimlanes"
+        aria-hidden="true"
+        style={{
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+        }}
+      >
+        {lanes.map((lane) => {
+          const band = geometry.get(lane.id)!;
+          return (
+            <div
+              key={lane.id}
+              className="ed-swimlane"
+              style={{
+                left: minX,
+                top: band.top,
+                width: maxX - minX,
+                height: band.height,
+              }}
+            />
+          );
+        })}
+      </div>
+      <div
+        className="ed-lane-labels"
+        role="list"
+        aria-label="Carriles del mapa"
+      >
+        {lanes.map((lane) => (
+          <span
+            role="listitem"
             key={lane.id}
-            className="ed-swimlane"
             style={{
-              left: minX,
-              top: band.top,
-              width: maxX - minX,
-              height: band.height,
+              top: viewport.y + geometry.get(lane.id)!.top * viewport.zoom,
+              borderLeftColor: String(lane.data.color || "#2165ff"),
             }}
           >
-            <span style={{ borderColor: String(lane.data.color || "#2165ff") }}>
-              {String(lane.data.name)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+            {String(lane.data.name)}
+          </span>
+        ))}
+      </div>
+    </>
   );
 }
 function Cursors() {
@@ -1481,6 +1544,10 @@ function Inspector({
         onChange={(owner) => onPatch({ owner })}
         items={[
           { id: "", name: "Sin asignar" },
+          ...(data.owner &&
+          !members.some((member) => member.name === data.owner)
+            ? [{ id: data.owner, name: data.owner }]
+            : []),
           ...members.map((member) => ({
             id: member.name,
             name: `${member.name} · ${member.role}`,

@@ -112,6 +112,7 @@ export default function StudioApp() {
     [conflict, setConflict] = useState(false),
     [published, setPublished] = useState<any>(null);
   const boardRef = useRef(board);
+  const flushMap = useRef<(() => Promise<boolean>) | null>(null);
   boardRef.current = board;
   const activeId = useRef(""),
     identity = useRef(""),
@@ -132,7 +133,8 @@ export default function StudioApp() {
     const t = setTimeout(() => setToast(""), 5000);
     return () => clearTimeout(t);
   }, [toast]);
-  function navigate(v: View, id?: string) {
+  async function navigate(v: View, id?: string) {
+    if (v !== view && flushMap.current && !(await flushMap.current())) return;
     if (nav.slice(4).some(([key]) => key === v)) setShowTracking(true);
     setView(v);
     if (id !== undefined) setSelection(id);
@@ -159,6 +161,8 @@ export default function StudioApp() {
       );
   }
   async function openBoard(id: string) {
+    if (flushMap.current && !(await flushMap.current()))
+      throw new Error("El proceso tiene cambios pendientes de guardar.");
     const data = await api("/boards/" + encodeURIComponent(id));
     const b = normalized(data.board ?? data);
     activeId.current = id;
@@ -173,6 +177,10 @@ export default function StudioApp() {
     const url = new URL(location.href);
     url.searchParams.set("board", id);
     history.replaceState(null, "", url);
+    const sending = sessionStorage.getItem(
+      pendingKey(identity.current, id) + ":sending",
+    );
+    if (sending) await submit(JSON.parse(sending));
     await reloadMembers(b);
   }
   async function createBoard(
@@ -347,16 +355,17 @@ export default function StudioApp() {
       setToast(String(e));
     }
   }
-  function remember(p: Pending | null) {
-    if (!board) return;
-    const key = pendingKey(identity.current, board.id);
+  function remember(p: Pending | null, boardId = activeId.current) {
+    const key = pendingKey(identity.current, boardId);
     if (p) sessionStorage.setItem(key, JSON.stringify(p));
     else sessionStorage.removeItem(key);
-    setRetry(p);
+    if (boardId === activeId.current) setRetry(p);
   }
   async function submit(p: Pending, desc?: string) {
     if (p.boardId !== activeId.current || p.userId !== identity.current)
       return false;
+    const sendingKey = pendingKey(p.userId, p.boardId) + ":sending";
+    sessionStorage.setItem(sendingKey, JSON.stringify(p));
     try {
       await api("/boards/" + p.boardId + "/batch", "POST", {
         changes: p.changes,
@@ -364,13 +373,13 @@ export default function StudioApp() {
       });
       const r = await api("/boards/" + p.boardId);
       acceptBoard(normalized(r.board ?? r));
-      remember(null);
+      remember(null, p.boardId);
       setConflict(false);
       if (desc) setToast(desc);
       return true;
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
-        remember(p);
+        remember(p, p.boardId);
         setConflict(true);
         setToast(
           "Hay una edición simultánea. Tu propuesta está disponible para comparar.",
@@ -380,12 +389,14 @@ export default function StudioApp() {
         e instanceof TypeError ||
         (e instanceof ApiError && e.status >= 500)
       ) {
-        remember(p);
+        remember(p, p.boardId);
         setToast(
           "Conexión interrumpida. Conservamos tu cambio en esta pestaña.",
         );
       } else setToast(String(e));
       return false;
+    } finally {
+      sessionStorage.removeItem(sendingKey);
     }
   }
   const apply = useCallback(
@@ -475,6 +486,7 @@ export default function StudioApp() {
         role: board.role,
         canEdit,
         apply,
+        flushMap,
         selection,
         select: setSelection,
         navigate,

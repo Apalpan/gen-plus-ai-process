@@ -1,12 +1,20 @@
 # Prompt maestro para Codex — construir GEN+ AI Process 2.0
 
-Copia desde «Encargo» hasta el final y ejecútalo en Codex con el repositorio [Apalpan/gen-plus-ai-process](https://github.com/Apalpan/gen-plus-ai-process) abierto. La rama de documentación es `ai-process/plan-v2`. El [diagnóstico y plan](PLAN.md) acompaña este prompt.
+Abre la rama `ai-process/v2` del repositorio personal de Alejandro y usa el encargo para continuar la aplicación que ya está en producción. El diagnóstico recoge el punto de partida. La propuesta de taller fija los criterios de la siguiente iteración. [Repositorio](https://github.com/Apalpan/gen-plus-ai-process/tree/ai-process/v2) · [Diagnóstico](PLAN.md) · [Propuesta y piloto](MEJORA-MAPEADOR.md)
 
 ## Encargo
 
 Actúa como responsable de producto e implementación de **GEN+ AI Process 2.0**. Trabaja sobre el código ya existente. Entrega una aplicación funcional en la que cinco personas puedan mapear y mejorar juntas un proceso con el manejo fluido de una pizarra colaborativa, datos trazables y una interfaz propia de GEN+. Un usuario general debe poder empezar en minutos. Un equipo AEC debe poder modelar un sistema de producción desde diseño a montaje, verificar sus restricciones y discutir escenarios con evidencia.
 
-Construye por bloques funcionales y continúa mientras puedas demostrar progreso. Al empezar, lee instrucciones del repo, `docs/ai-process-v2/PLAN.md` si existe, `README.md`, los handoffs aplicables y los archivos del bloque. Registra rama, estado, SHA y comandos para reproducir. Crea una rama de trabajo nueva desde `ai-process/plan-v2` o, con los documentos disponibles en el chat, desde `3d78140ea2d95a9ae559f9e6c8b1991aada3c3d7`. Respeta cambios de otros autores. Limita la entrega inicial a código y entorno local. El workflow original despliega Pages desde `main`. Para publicar, activar servicios remotos o usar una cuenta de servicio, aplica la autorización y la cuenta explícita de Alejandro que correspondan.
+Empieza por el README, el estado vigente, la propuesta de mejora y la rama `ai-process/v2`. Comprueba qué capacidades ya cumplen sus criterios. Conserva los mapas, los casos y las revisiones existentes. Ejecuta el bloque autorizado, registra SHA y pruebas y verifica el enlace estable en el proyecto personal de Vercel `apalpan-s-projects/gen-plus-ai-process-v2`. Respeta la cuenta y el alcance que Alejandro haya autorizado en la sesión.
+
+## Prioridad de producto y de presentación
+
+Abre con el Dashboard gerencial del espacio, sigue con Objetivos y Framework BDC, y ofrece acceso directo al Mapa de proceso. Los tableros operativos, ICEbot, asistentes y equipo siguen disponibles para profundizar. En cada pantalla permite pasar de un indicador al proceso y la actividad que explican su valor. Usa el taller VDC del motor de aprendizaje como referencia metodológica para CO, PO, ProdO, factores controlables, VIA/BIM, ICE y PPM.
+
+La prueba decisiva es que alguien pueda entender y mapear un proceso rápidamente. Ensaya el caso histórico de consultas técnicas y un flujo en blanco. Comprueba que cinco personas pueden dibujar con carriles rotulados, rectángulos de actividad, rombos de decisión, cilindros de datos o cola, eventos circulares y flechas diferenciadas para secuencia, información, dependencia y retrabajo. La ficha de cada paso reúne responsable, participantes, tecnología, objetivo, factor, métrica, unidad, fórmula, meta, periodo y fuente. Verifica que una métrica propia se guarda al cambiar de vista y al recargar, aparece en Framework BDC y permite volver al paso correcto.
+
+Mide la mejora frente al editor clásico con un revisor que no haya dibujado el mapa. Registra minutos hasta aceptación, aciertos de comprensión y mapas aceptados por hora-persona. Publica el factor observado con su muestra y las condiciones de la prueba.
 
 ## Punto de partida y decisiones
 
