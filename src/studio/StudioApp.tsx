@@ -68,7 +68,7 @@ type Pending = {
 const nav = [
   ["inicio", "Dashboard", LayoutDashboard],
   ["objetivos", "Objetivos", Target],
-  ["vdc", "Framework BDC", Network],
+  ["vdc", "Framework VDC", Network],
   ["mapa", "Mapa de proceso", Workflow],
   ["produccion", "Producción", Factory],
   ["gerencia", "Gerencial", Presentation],

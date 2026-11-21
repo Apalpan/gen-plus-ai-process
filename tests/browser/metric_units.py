@@ -11,7 +11,7 @@ with sync_playwright() as pw:
     page.goto(url)
     page.get_by_role("button", name="Abrir demo", exact=False).click()
     nav = page.locator(".st-rail nav")
-    nav.get_by_role("button", name="Framework BDC", exact=True).click()
+    nav.get_by_role("button", name="Framework VDC", exact=True).click()
     catalog = page.locator("details").filter(has=page.locator("input[name=actionThreshold]"))
     catalog.locator("summary").click()
     catalog.get_by_label("Ficha de medición").select_option("")

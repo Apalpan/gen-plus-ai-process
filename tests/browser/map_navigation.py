@@ -1,4 +1,4 @@
-"""Joining an activity to BDC must survive both immediate navigation and reload."""
+"""Joining an activity to VDC must survive both immediate navigation and reload."""
 import os
 import re
 from pathlib import Path
@@ -20,15 +20,15 @@ with sync_playwright() as runner:
     page.get_by_role("button", name="Añadir métrica propia").click()
     page.get_by_role("textbox", name="Nombre de métrica propia").fill("Preparación por lote")
     page.get_by_role("textbox", name="Unidad de métrica propia").fill("min/lote")
-    nav.get_by_role("button", name="Framework BDC").click()
+    nav.get_by_role("button", name="Framework VDC").click()
     metric = page.get_by_text("Preparación por lote", exact=True)
     expect(metric).to_be_visible(timeout=20000)
     metric.click()
     page.get_by_role("textbox", name="Nombre de métrica propia").fill("Tiempo de preparación por lote")
     page.get_by_role("button", name="Guardar", exact=True).click()
     page.reload()
-    expect(nav.get_by_role("button", name="Framework BDC")).to_be_visible(timeout=20000)
-    nav.get_by_role("button", name="Framework BDC").click()
+    expect(nav.get_by_role("button", name="Framework VDC")).to_be_visible(timeout=20000)
+    nav.get_by_role("button", name="Framework VDC").click()
     expect(page.locator(".react-flow__node").filter(has_text="Tiempo de preparación por lote").first).to_be_visible(timeout=20000)
     board_id = parse_qs(urlparse(page.url).query)["board"][0]
     entities = page.request.get(target + "/api/boards/" + board_id).json()["board"]["entities"]

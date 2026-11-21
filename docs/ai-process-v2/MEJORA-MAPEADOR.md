@@ -8,7 +8,7 @@ Una persona que conoce el trabajo debe poder dibujarlo y otra debe poder explica
 | --- | --- |
 | Dashboard | Elegir el proceso que requiere atención según sus indicadores, metas y decisiones pendientes. El resumen del espacio cuenta procesos, pasos, objetivos y asuntos abiertos. Cada indicador de desempeño pertenece al proceso seleccionado. |
 | Objetivos | Acordar qué valor espera el cliente, qué entrega aceptará y qué resultado de producción necesita el proyecto. Registrar criterio, responsable, meta y horizonte. |
-| Framework BDC | Desde un objetivo, localizar los factores controlables, responsables, actividades y mediciones que contribuyen a él. Volver desde la evidencia a la decisión. |
+| Framework VDC | Desde un objetivo, localizar los factores controlables, responsables, actividades y mediciones que contribuyen a él. Volver desde la evidencia a la decisión. |
 | Mapa de proceso | Ordenar actividades por carril, hacer explícita cada transferencia y decidir qué métrica permite evaluar una actividad. |
 | Seguimiento | Interpretar los cortes de producción, resolver un bloqueo en ICE y asignar la acción al equipo correspondiente. |
 
@@ -23,7 +23,7 @@ Una persona que conoce el trabajo debe poder dibujarlo y otra debe poder explica
 
 ## Método y medición
 
-La vista **Framework BDC** usa el contenido de Virtual Design and Construction (VDC). El taller de referencia diseña desde cliente (CO), proyecto (PO) y producción (ProdO) hasta el factor controlable (FC). La revisión semanal recorre la cadena en sentido inverso, con evidencia de la acción y observaciones comparables. La conexión dibujada expresa una hipótesis de contribución. El modelo de producto, organización y proceso ayuda a ubicar la tecnología, los participantes y el trabajo que debe coordinarse. [Stanford CIFE, Working Paper 097](https://purl.stanford.edu/gg301vb3551)
+La vista **Framework VDC** usa el contenido de Virtual Design and Construction (VDC). El taller de referencia diseña desde cliente (CO), proyecto (PO) y producción (ProdO) hasta el factor controlable (FC). La revisión semanal recorre la cadena en sentido inverso, con evidencia de la acción y observaciones comparables. La conexión dibujada expresa una hipótesis de contribución. El modelo de producto, organización y proceso ayuda a ubicar la tecnología, los participantes y el trabajo que debe coordinarse. [Stanford CIFE, Working Paper 097](https://purl.stanford.edu/gg301vb3551)
 
 La ficha de una actividad sirve para mediciones de flujo, tiempo, calidad, variabilidad, confiabilidad, capacidad, coordinación y tecnología. Los indicadores de objetivo admiten cortes sucesivos. Para una proporción como PPC, el denominador es el total de compromisos del plan congelado del periodo y el numerador los completados como se prometieron. Para una duración se registra el valor en la unidad definida. Una meta de un caso de ejemplo pertenece a ese caso.
 

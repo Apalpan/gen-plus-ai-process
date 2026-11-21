@@ -1443,7 +1443,7 @@ export function VdcView({ mode }: { mode: VdcMode }) {
           </div>
           <h1 className="mt-1 font-display text-3xl font-bold text-navy-900">
             {mode === "vdc"
-              ? "Framework BDC"
+              ? "Framework VDC"
               : mode === "objetivos"
                 ? "Objetivos"
                 : mode === "gerencia"
