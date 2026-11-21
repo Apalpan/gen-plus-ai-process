@@ -11,12 +11,33 @@ import { dirname, resolve } from "node:path";
 import { serveClient } from "./web.mjs";
 
 const host = process.env.AI_PROCESS_HOST ?? "127.0.0.1";
-const teamOrigin = process.env.AI_PROCESS_TEAM_ORIGIN
-  ? new URL(process.env.AI_PROCESS_TEAM_ORIGIN)
+const configuredOrigin =
+  process.env.AI_PROCESS_TEAM_ORIGIN ??
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+const teamOrigin = configuredOrigin
+  ? new URL(
+      configuredOrigin.startsWith("http")
+        ? configuredOrigin
+        : `https://${configuredOrigin}`,
+    )
   : null;
+const cloudRuntime = Boolean(process.env.VERCEL);
+const cloudOrigins = new Set(
+  [
+    teamOrigin?.origin,
+    process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+    process.env.VERCEL_BRANCH_URL &&
+      `https://${process.env.VERCEL_BRANCH_URL}`,
+  ].filter(Boolean),
+);
 if (teamOrigin && teamOrigin.protocol !== "https:")
   throw Error("El origen compartido requiere HTTPS.");
-if (!["127.0.0.1", "localhost", "::1"].includes(host) && !teamOrigin)
+if (
+  !cloudRuntime &&
+  !["127.0.0.1", "localhost", "::1"].includes(host) &&
+  !teamOrigin
+)
   throw Error(
     "Configura AI_PROCESS_TEAM_ORIGIN para escuchar fuera de loopback.",
   );
@@ -138,6 +159,9 @@ function requiresLoopbackOrigin(request) {
   if (!origin) return true;
   try {
     const url = new URL(origin);
+    if (cloudRuntime) {
+      return cloudOrigins.has(url.origin);
+    }
     if (teamOrigin) return url.origin === teamOrigin.origin;
     return ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname);
   } catch {
@@ -224,6 +248,13 @@ function httpError(status, code, extra = {}) {
 }
 
 function readBody(request) {
+  if (request.body !== undefined) {
+    const body = request.body;
+    const bytes = Buffer.isBuffer(body) ? body : Buffer.from(typeof body === "string" ? body : JSON.stringify(body));
+    if (bytes.length > 1_000_000) throw httpError(413, "payload_too_large");
+    try { return Promise.resolve(bytes.length ? JSON.parse(bytes.toString("utf8")) : {}); }
+    catch { throw httpError(400, "invalid_json"); }
+  }
   return new Promise((resolveBody, reject) => {
     let raw = "";
     request.on("data", (chunk) => {
@@ -301,16 +332,18 @@ function boardWithRole(boardId, userId) {
 }
 
 function cookieHeader(token) {
-  return `ai_process_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${teamOrigin ? "; Secure" : ""}`;
+  return `ai_process_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${teamOrigin || cloudRuntime ? "; Secure" : ""}`;
 }
 
 async function handler(request, response) {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`);
     if (
-      teamOrigin
-        ? url.host !== teamOrigin.host
-        : !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+      cloudRuntime
+        ? !cloudOrigins.has(`https://${request.headers.host}`)
+        : teamOrigin
+          ? url.host !== teamOrigin.host
+          : !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
     )
       throw httpError(403, "host_forbidden");
     const path = url.pathname;
@@ -435,7 +468,7 @@ async function handler(request, response) {
         );
       return respond(response, 204, null, {
         "set-cookie":
-          "ai_process_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+          `ai_process_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${teamOrigin || cloudRuntime ? "; Secure" : ""}`,
       });
     }
     if (!currentUser) throw httpError(401, "unauthenticated");
@@ -1042,7 +1075,89 @@ async function handler(request, response) {
   }
 }
 
-const server = createServer(handler);
-server.listen(port, host, () =>
-  console.log(`AI Process server listening on http://${host}:${port}`),
-);
+const snapshotTables = [
+  "users",
+  "sessions",
+  "user_profiles",
+  "workspaces",
+  "memberships",
+  "boards",
+  "entities",
+  "events",
+  "publications",
+];
+
+/**
+ * A transport-neutral snapshot for a durable store. The local development
+ * server continues to use SQLite directly. Vercel hydrates this snapshot in
+ * a temporary SQLite database for each serialized request, then commits the
+ * next snapshot through PostgreSQL while holding a row lock.
+ */
+export function exportSnapshot() {
+  return Object.fromEntries(
+    snapshotTables.map((table) => [
+      table,
+      db.prepare(`SELECT * FROM ${table}`).all(),
+    ]),
+  );
+}
+
+export function importSnapshot(snapshot = {}) {
+  db.exec("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE");
+  try {
+    for (const table of [...snapshotTables].reverse()) {
+      db.prepare(`DELETE FROM ${table}`).run();
+    }
+    for (const table of snapshotTables) {
+      const rows = Array.isArray(snapshot[table]) ? snapshot[table] : [];
+      for (const row of rows) {
+        const keys = Object.keys(row);
+        if (!keys.length) continue;
+        const marks = keys.map(() => "?").join(",");
+        db.prepare(
+          `INSERT INTO ${table}(${keys.join(",")}) VALUES(${marks})`,
+        ).run(...keys.map((key) => row[key]));
+      }
+    }
+    db.exec("COMMIT; PRAGMA foreign_keys = ON");
+  } catch (error) {
+    db.exec("ROLLBACK; PRAGMA foreign_keys = ON");
+    throw error;
+  }
+}
+
+export function exportPresence() {
+  return [...presence.entries()].flatMap(([boardId, group]) =>
+    [...group.entries()].map(([userId, value]) => ({
+      boardId,
+      userId,
+      ...value,
+    })),
+  );
+}
+
+export function importPresence(records = []) {
+  presence.clear();
+  for (const record of records) {
+    if (!record?.boardId || !record?.userId || !record?.expiresAt) continue;
+    if (Number(record.expiresAt) <= Date.now()) continue;
+    const group = presence.get(record.boardId) ?? new Map();
+    group.set(record.userId, {
+      user: record.user,
+      cursor: record.cursor,
+      selection: record.selection,
+      view: record.view,
+      expiresAt: Number(record.expiresAt),
+    });
+    presence.set(record.boardId, group);
+  }
+}
+
+export { handler };
+
+if (process.env.AI_PROCESS_EMBEDDED !== "1") {
+  const server = createServer(handler);
+  server.listen(port, host, () =>
+    console.log(`AI Process server listening on http://${host}:${port}`),
+  );
+}

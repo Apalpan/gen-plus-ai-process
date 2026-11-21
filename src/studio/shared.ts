@@ -98,8 +98,8 @@ export async function api<T = any>(
   if (response.status === 204) return undefined as T;
   const data = await response
     .json()
-    .catch(() => ({ message: "El servidor local no está disponible." }));
-  if (!response.ok || data.message === "El servidor local no está disponible.")
+    .catch(() => ({ message: "El servidor no está disponible." }));
+  if (!response.ok || data.message === "El servidor no está disponible.")
     throw new ApiError(response.status, data);
   return data;
 }

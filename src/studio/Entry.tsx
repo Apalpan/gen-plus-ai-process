@@ -1,3 +1,4 @@
+import { isCloud } from "./platform";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -85,7 +86,7 @@ export default function Entry({
           <strong>AI Process</strong>
         </div>
         <span className="st-entry-context">
-          <span className="st-dot" /> Espacio local
+          <span className="st-dot" /> {isCloud ? "Espacio compartido" : "Espacio local"}
         </span>
       </header>
       <div className="st-entry-grid">
@@ -119,7 +120,7 @@ export default function Entry({
                   disabled={busy}
                   onClick={() => submit("guest")}
                 >
-                  {busy ? "Abriendo…" : "Abrir demo local"}
+                  {busy ? "Abriendo…" : isCloud ? "Abrir demo" : "Abrir demo local"}
                   <ArrowRight size={17} />
                 </button>
                 <button
@@ -143,7 +144,7 @@ export default function Entry({
                 ← Volver
               </button>
               <h2>
-                {mode === "login" ? "Acceso de equipo" : "Crear cuenta local"}
+                {mode === "login" ? "Acceso de equipo" : "Crear cuenta"}
               </h2>
               {mode === "register" && (
                 <label className="st-field">
@@ -192,7 +193,7 @@ export default function Entry({
                 }}
               >
                 {mode === "login"
-                  ? "Crear una cuenta local"
+                  ? "Crear una cuenta"
                   : "Ya tengo cuenta"}
               </button>
             </form>

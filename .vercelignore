@@ -1,0 +1,14 @@
+.git
+.vercel
+_ai
+dist
+node_modules
+.env*
+server/data
+*.sqlite*
+*.db*
+scripts/check-domain.mjs
+tests
+server/tests
+docs
+.github

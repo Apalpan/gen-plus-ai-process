@@ -19,10 +19,12 @@
   "dependencies": {
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+    "@vercel/oidc": "^4.0.9",
     "framer-motion": "^11.3.19",
     "html-to-image": "^1.11.11",
     "lucide-react": "^0.408.0",
     "nanoid": "^5.0.7",
+    "pg": "^8.23.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "reactflow": "^11.11.4",
@@ -39,5 +41,8 @@
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4",
     "vite": "^5.3.5"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

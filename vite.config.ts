@@ -9,6 +9,7 @@ const base = process.env.BASE_PATH ?? '/';
 // https://vitejs.dev/config/
 export default defineConfig({
   base,
+  define: { 'import.meta.env.VITE_AI_PROCESS_CLOUD': JSON.stringify(process.env.VERCEL === '1'), 'import.meta.env.VITE_AI_PROCESS_GATEWAY': JSON.stringify(Boolean(process.env.AI_PROCESS_GATEWAY_MODEL)) },
   server: { host: '127.0.0.1', port: 5178, strictPort: true, proxy: { '/api': 'http://127.0.0.1:8787' } },
   preview: { host: '127.0.0.1', port: 5178, strictPort: true, proxy: { '/api': 'http://127.0.0.1:8787' } },
   plugins: [react()],

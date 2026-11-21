@@ -1,3 +1,4 @@
+import { isCloud, hasCloudModel } from "./platform";
 import { useState } from "react";
 import {
   Bot,
@@ -25,7 +26,7 @@ export default function Agents() {
     [cap, setCap] = useState<string>("map"),
     [input, setInput] = useState(""),
     [objectiveId, setObjectiveId] = useState(""),
-    [model, setModel] = useState(true),
+    [model, setModel] = useState(!isCloud),
     [busy, setBusy] = useState(false);
   const runs = s.entities
     .filter((e) => e.kind === "agent-run")
@@ -145,9 +146,10 @@ export default function Agents() {
             <input
               type="checkbox"
               checked={model}
+              disabled={isCloud && !hasCloudModel}
               onChange={(e) => setModel(e.target.checked)}
             />{" "}
-            Interpretar con Ollama local
+            {isCloud ? (hasCloudModel ? "Analizar el contexto y sus fuentes con Vercel AI Gateway" : "Asistente de reglas del proyecto") : "Interpretar con Ollama local"}
           </label>
           <button
             disabled={busy || !s.canEdit}

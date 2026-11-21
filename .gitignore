@@ -39,3 +39,5 @@ server/data/*.secret
 
 # Local verification evidence and handoff
 _ai/
+
+.vercel/

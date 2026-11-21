@@ -29,6 +29,12 @@ python tests/browser/vdc_workflow.py
 
 La primera prueba modifica cinco actividades desde cinco sesiones independientes. La segunda registra un corte, consulta los dos dashboards y recorre el grafo hasta una decisión ICE. Las capturas y resultados se escriben bajo `AI_PROCESS_QA_DIR` o en un directorio temporal.
 
+### Vercel
+
+El despliegue compila el cliente Vite y publica una función Node 24 en `api/entry.mjs`. Las peticiones a `/api/*` pasan por esa función. La instancia usa `DATABASE_URL` en el servidor para persistir el estado en PostgreSQL y compartir presencia. Los datos de demostración se generan al entrar en cada espacio privado. La base local del equipo está excluida del paquete de despliegue.
+
+Configura PostgreSQL en el mismo proyecto y entorno de Vercel que la aplicación. Para usar también la interpretación de lenguaje natural, configura `AI_PROCESS_GATEWAY_MODEL` durante la compilación y la ejecución. La aplicación verifica que el catálogo vigente indique precio cero de entrada y salida para el modelo elegido. La opción de enviar contexto a AI Gateway se activa en la interfaz. Las herramientas determinísticas y el proceso de revisión funcionan aunque el proveedor de modelos esté indisponible.
+
 ## Editor clásico
 
 > Mapea procesos complejos desde ideas simples.

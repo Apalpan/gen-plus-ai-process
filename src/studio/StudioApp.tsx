@@ -1,3 +1,4 @@
+import { isCloud } from "./platform";
 import {
   lazy,
   Suspense,
@@ -241,7 +242,7 @@ export default function StudioApp() {
       running = false,
       count = 0;
     const poll = async () => {
-      if (stopped || running || activeId.current !== id) return;
+      if (stopped || running || activeId.current !== id || document.visibilityState === "hidden") return;
       running = true;
       try {
         const p = await api("/boards/" + id + "/presence", "POST", {
@@ -291,7 +292,7 @@ export default function StudioApp() {
       }
     };
     void poll();
-    const timer = setInterval(poll, 700);
+    const timer = setInterval(poll, isCloud ? 2400 : 700);
     return () => {
       stopped = true;
       clearInterval(timer);
@@ -493,7 +494,7 @@ export default function StudioApp() {
               {Math.max(1, presence.length)}
             </button>
             <span className="st-identity">
-              {user.guest ? "Demo local" : user.name}
+              {user.guest ? (isCloud ? "Demo privada" : "Demo local") : user.name}
             </span>
             <button onClick={logout} aria-label="Cerrar sesión">
               <LogOut size={16} />

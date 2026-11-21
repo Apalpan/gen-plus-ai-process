@@ -259,7 +259,7 @@ export default function Ice() {
           <h1>Sesiones ICE</h1>
           <p>Decisiones, restricciones y compromisos vinculados al proceso.</p>
         </div>
-        <span className="st-tag">ICEBOT · Importación local</span>
+        <span className="st-tag">ICEBOT · Importar actas</span>
       </div>
       <div className="st-tabs">
         {[
