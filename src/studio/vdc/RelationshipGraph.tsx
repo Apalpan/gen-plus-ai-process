@@ -310,6 +310,10 @@ export function RelationshipGraph() {
     ...activityMetrics,
     ...legacyMetrics,
   ].sort((a, b) => a.id.localeCompare(b.id));
+  // Classic cases can have measures with no activity link. Give those their
+  // own column so a handful of reference cards does not shrink the whole map.
+  const historicalOnly =
+    legacyMetrics.length > 0 && nodes.length === 0 && vdcMetrics.length === 0;
   const rows = [0, 0, 0, 0, 0, 0];
   const boxes = ranked.map((n) => {
     const level =
@@ -324,12 +328,21 @@ export function RelationshipGraph() {
             : n.data.level;
     const metricResult =
       n.kind === "vdc-metric" ? vdcMetricResults.get(n.id) : null;
-    const col = Math.max(0, columns.indexOf(level)),
+    const independentReference =
+      historicalOnly &&
+      n.kind === "legacy-metric" &&
+      !n.data.relatedNodeIds?.length;
+    const col = independentReference ? 2 : Math.max(0, columns.indexOf(level)),
       row = rows[col]++;
     return {
       id: n.id,
       type: "relationship",
-      position: { x: col * 291, y: row * 123 + Math.max(0, col - 1) * 36 },
+      position: {
+        x: col * 291,
+        y:
+          row * (historicalOnly ? 150 : 123) +
+          (historicalOnly ? 0 : Math.max(0, col - 1) * 36),
+      },
       draggable: false,
       connectable: false,
       data: {
@@ -498,7 +511,16 @@ export function RelationshipGraph() {
           <Crosshair size={14} /> Encuadrar
         </button>
       </div>
-      <div className="rg-flow">
+      <div
+        className="rg-flow"
+        style={
+          historicalOnly
+            ? {
+                height: `clamp(375px, ${Math.max(...rows) * 150 + 30}px, 80svh)`,
+              }
+            : undefined
+        }
+      >
         <ReactFlow
           onInit={setFlow}
           nodes={boxes}

@@ -173,7 +173,12 @@ export function Editor() {
   const editSerial = useRef(0);
   const [inspector, setInspector] = useState(() => window.innerWidth >= 1130);
   const [panelWidth, setPanelWidth] = useState(306);
-  const [autoShare, setAutoShare] = useState(true);
+  const [autoShare, setAutoShare] = useState(
+    () => sessionStorage.getItem(cacheKey + ":auto-share") !== "off",
+  );
+  useEffect(() => {
+    sessionStorage.setItem(cacheKey + ":auto-share", autoShare ? "on" : "off");
+  }, [cacheKey, autoShare]);
   const [selected, setSelected] = useState<string | null>(selection);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -496,7 +501,7 @@ export function Editor() {
     return inFlight.current;
   };
   useEffect(() => {
-    studio.flushMap.current = dirty ? commit : null;
+    studio.flushMap.current = dirty && autoShare ? commit : null;
     return () => {
       studio.flushMap.current = null;
     };

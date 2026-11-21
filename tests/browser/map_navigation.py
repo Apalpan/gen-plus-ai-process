@@ -21,7 +21,7 @@ with sync_playwright() as runner:
     page.get_by_role("textbox", name="Nombre de métrica propia").fill("Preparación por lote")
     page.get_by_role("textbox", name="Unidad de métrica propia").fill("min/lote")
     nav.get_by_role("button", name="Framework BDC").click()
-    metric = page.locator(".react-flow__node").filter(has_text="Preparación por lote").first
+    metric = page.get_by_text("Preparación por lote", exact=True)
     expect(metric).to_be_visible(timeout=20000)
     metric.click()
     page.get_by_role("textbox", name="Nombre de métrica propia").fill("Tiempo de preparación por lote")
@@ -36,6 +36,16 @@ with sync_playwright() as runner:
         metric.get("definition", {}).get("name") == "Tiempo de preparación por lote"
         for step in entities if step["kind"] == "step" for metric in step["data"].get("metrics", [])
     )
+    nav.get_by_role("button", name="Mapa de proceso").click()
+    page.get_by_role("button", name=re.compile("^Actividad Fabricar lote")).click()
+    page.get_by_label("Compartir automáticamente").uncheck()
+    page.get_by_role("textbox", name="Título", exact=True).fill("Borrador personal de fabricación")
+    nav.get_by_role("button", name="Dashboard", exact=True).click()
+    nav.get_by_role("button", name="Mapa de proceso").click()
+    expect(page.get_by_label("Compartir automáticamente")).not_to_be_checked()
+    expect(page.get_by_role("textbox", name="Título", exact=True)).to_have_value("Borrador personal de fabricación")
+    saved = page.request.get(target + "/api/boards/" + board_id).json()["board"]["entities"]
+    assert all(step["data"].get("title") != "Borrador personal de fabricación" for step in saved)
     nav.get_by_role("button", name="Dashboard", exact=True).click()
     page.locator(".mg-head").get_by_role("button", name="Nuevo proceso").click()
     dialog = page.get_by_role("dialog")
