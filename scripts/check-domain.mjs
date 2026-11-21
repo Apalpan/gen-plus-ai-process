@@ -22,6 +22,8 @@ try {
     assert.deepEqual(validateMap(upgraded), []);
     const copy = recoverOriginal(upgraded);
     assert.equal(copy.nodes.length, v1.nodes.length);
+    assert.deepEqual(copy.nodes.map(n=>n.type), v1.nodes.map(n=>n.type));
+    assert.deepEqual(copy.edges.map(e=>e.type), v1.edges.map(e=>e.type));
     assert.deepEqual(copy.metrics, v1.metrics);
     assert.deepEqual(copy.implementationChecklist, v1.implementationChecklist);
   }

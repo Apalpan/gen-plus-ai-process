@@ -165,13 +165,11 @@ export function createTemplateEntities(templateId: string): StudioEntity[] {
       laneId: laneEntities[index % laneEntities.length].id,
       owner: lanes[index % lanes.length],
       type:
-        index === 0
-          ? "start"
-          : title.startsWith("¿")
-            ? "decision"
-            : index === template.stages.length - 1
-              ? "end"
-              : "activity",
+        title.startsWith("¿")
+          ? "decision"
+          : /^(inicio|fin|cierre|aceptación|aceptar)/i.test(title)
+            ? index === template.stages.length - 1 ? "end" : "start"
+            : "activity",
       x: 340 + index * 250,
       y: 90 + (index % 2) * 150,
       status: "draft",

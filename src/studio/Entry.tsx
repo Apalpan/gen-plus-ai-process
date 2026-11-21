@@ -93,13 +93,13 @@ export default function Entry({
         <div className="st-entry-copy">
           <div className="st-overline">PLATAFORMA DE PROCESOS</div>
           <h1>
-            Del mapa a la
+            Mapea procesos
             <br />
-            <em>decisión.</em>
+            <em>con tu equipo.</em>
           </h1>
           <p>
-            Mapea el trabajo con tu equipo. Conecta cada entrega, restricción y
-            decisión con los objetivos del proyecto.
+            Dibuja el flujo, acuerda quién recibe cada entrega y vincula sus
+            métricas con los objetivos del proyecto.
           </p>
           <div className="st-entry-features">
             VDC <i /> Producción <i /> Coordinación ICE

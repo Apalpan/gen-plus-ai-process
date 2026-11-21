@@ -1,18 +1,14 @@
-import { useState } from "react";
-import {
-  ArrowUpRight,
-  Layers,
-  GitFork,
-  Plus,
-  ClipboardCheck,
-  Target,
-  ChevronRight,
-  Workflow,
-  Gauge,
-} from "lucide-react";
-import { useStudio, type Entity } from "./shared";
+import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
+import type { Entity } from "./shared";
 import { studioTemplates } from "./editor/templates";
 import { seedVdc } from "./vdc/seed";
+import {
+  buildHistoricalCase,
+  listHistoricalCases,
+  type HistoricalCase,
+} from "./editor/historicalCases";
+import { validateMap } from "./editor/importMap";
 export function prefabricated() {
   const entities = [
     ...studioTemplates.find((t) => t.id === "industrial")!.build(),
@@ -22,6 +18,34 @@ export function prefabricated() {
   if (design) {
     design.data.factorId = "fc-qa";
     design.data.objectiveId = "prodo-via";
+    design.data.owner = "Coordinación BIM";
+    design.data.experts = ["Ingeniería de fábrica", "Control de calidad"];
+    design.data.technology = "Modelo federado y registro BCF";
+    design.data.metrics = [
+      {
+        code: "cycle-time",
+        observed: 6.5,
+        target: 8,
+        period: "2026-W47",
+        quality: "DATO_DEMO",
+        source: "Registro simulado de inicio y revisión de un paquete",
+      },
+    ];
+  }
+  const fabrication = entities.find((e) => e.id === "step_industrial_1");
+  if (fabrication) {
+    fabrication.data.objectiveId = "prodo-ppm";
+    fabrication.data.technology = "Registro de inspección del lote";
+    fabrication.data.metrics = [
+      {
+        code: "first-pass-yield",
+        observed: 90,
+        target: 95,
+        period: "2026-W47",
+        quality: "DATO_DEMO",
+        source: "Inspección simulada de 10 piezas; 9 aceptadas al primer pase",
+      },
+    ];
   }
   entities.push({
     id: "ice-initial",
@@ -51,6 +75,49 @@ export function BoardCreator({
     [tpl, setTpl] = useState("blank"),
     [kit, setKit] = useState(false),
     [busy, setBusy] = useState(false);
+  const [library, setLibrary] = useState<HistoricalCase[]>([]);
+  const [preview, setPreview] = useState<{
+    title: string;
+    entities: Entity[];
+    id: string;
+  } | null>(null);
+  const [error, setError] = useState("");
+  const historical = tpl.startsWith("legacy:");
+  const copy = historical && preview?.id === tpl ? preview : null;
+  const proposedName = name.trim() || (copy ? "Copia · " + copy.title : "");
+  useEffect(() => {
+    let live = true;
+    listHistoricalCases()
+      .then((items) => {
+        if (live) setLibrary(items);
+      })
+      .catch(() => {
+        if (live) setError("No se pudo cargar la biblioteca histórica.");
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!historical) return;
+    let live = true;
+    buildHistoricalCase(tpl.slice(7))
+      .then((result) => {
+        if (!live) return;
+        const problems = validateMap(result.entities);
+        if (problems.length) {
+          setError(problems[0]);
+          return;
+        }
+        setPreview({ ...result, id: tpl });
+      })
+      .catch(() => {
+        if (live) setError("No se pudo abrir el caso seleccionado.");
+      });
+    return () => {
+      live = false;
+    };
+  }, [tpl, historical]);
   return (
     <div className="st-dialog-back">
       <section
@@ -68,13 +135,20 @@ export function BoardCreator({
         <form
           onSubmit={async (e) => {
             e.preventDefault();
+            if (historical && !copy) return;
             setBusy(true);
             try {
               const t = studioTemplates.find((v) => v.id === tpl);
-              const entities = t ? t.build() : [];
-              if (kit) entities.push(...seedVdc());
-              await create(name.trim(), entities);
+              const entities = copy ? [...copy.entities] : t ? t.build() : [];
+              if (kit && !historical) entities.push(...seedVdc());
+              await create(proposedName, entities);
               close();
+            } catch (reason) {
+              setError(
+                reason instanceof Error
+                  ? reason.message
+                  : "No se pudo crear el mapa.",
+              );
             } finally {
               setBusy(false);
             }
@@ -84,166 +158,78 @@ export function BoardCreator({
             Nombre del proceso
             <input
               autoFocus
-              required
+              required={!historical}
               maxLength={120}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Liberación de paquetes de diseño"
+              placeholder={
+                copy
+                  ? "Copia · " + copy.title
+                  : "Ej. Liberación de paquetes de diseño"
+              }
             />
           </label>
           <label className="st-field">
             Punto de partida
-            <select value={tpl} onChange={(e) => setTpl(e.target.value)}>
+            <select
+              value={tpl}
+              onChange={(e) => {
+                setError("");
+                setPreview(null);
+                setTpl(e.target.value);
+              }}
+            >
               <option value="blank">Lienzo en blanco</option>
-              {studioTemplates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                </option>
-              ))}
+              <optgroup label="Plantillas de proceso">
+                {studioTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title}
+                  </option>
+                ))}
+              </optgroup>
+              {library.length > 0 && (
+                <optgroup label="Casos históricos">
+                  {library.map((c) => (
+                    <option key={c.id} value={"legacy:" + c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </label>
           <p>{studioTemplates.find((t) => t.id === tpl)?.description}</p>
-          <label className="st-check">
-            <input
-              type="checkbox"
-              checked={kit}
-              onChange={(e) => setKit(e.target.checked)}
-            />{" "}
-            Incluir kit VDC de ejemplo
-          </label>
-          <button className="st-primary" disabled={busy || !name.trim()}>
+          {copy && (
+            <div className="mg-copy-preview">
+              <strong>{copy.title}</strong>
+              <p>
+                {copy.entities.filter((e) => e.kind === "step").length} pasos ·{" "}
+                {copy.entities.filter((e) => e.kind === "lane").length} carriles
+                · {copy.entities.filter((e) => e.kind === "edge").length}{" "}
+                conexiones
+              </p>
+            </div>
+          )}
+          {!historical && (
+            <label className="st-check">
+              <input
+                type="checkbox"
+                checked={kit}
+                onChange={(e) => setKit(e.target.checked)}
+              />{" "}
+              Incluir kit VDC de ejemplo
+            </label>
+          )}
+          {error && <p role="alert">{error}</p>}
+          <button
+            className="st-primary"
+            disabled={busy || !proposedName || (historical && !copy)}
+          >
             <Plus size={16} />
-            Crear mapa
+            {historical ? "Crear copia del caso" : "Crear mapa"}
           </button>
         </form>
       </section>
     </div>
-  );
-}
-export default function Overview({ newBoard }: { newBoard: () => void }) {
-  const s = useStudio(),
-    steps = s.entities.filter((e) => e.kind === "step"),
-    links = s.entities.filter((e) => e.kind === "edge"),
-    objectives = s.entities.filter((e) => e.kind === "vdc-objective"),
-    pending = s.entities.filter(
-      (e) =>
-        ["ice-action", "ice-restriction", "ice-decision"].includes(e.kind) &&
-        !["verificado", "descartado"].includes(e.data.status),
-    );
-  return (
-    <section className="st-page">
-      <div className="st-heading">
-        <div>
-          <p className="st-eyebrow">ESPACIO DE TRABAJO</p>
-          <h1>Inicio</h1>
-        </div>
-        {s.canEdit && (
-          <button className="st-primary" onClick={newBoard}>
-            <Plus size={16} />
-            Nuevo proceso
-          </button>
-        )}
-      </div>
-      <div className="st-overview-hero">
-        <div>
-          <p className="st-overline">
-            PROCESO ACTIVO
-            {s.entities.some((e) => e.data.quality === "DATO_DEMO")
-              ? " · DATOS DE EJEMPLO"
-              : ""}
-          </p>
-          <h2>{s.board.title}</h2>
-          <button onClick={() => s.navigate("mapa")}>
-            Abrir mapa <ArrowUpRight size={16} />
-          </button>
-        </div>
-        <div className="st-mini-flow">
-          {steps
-            .filter(
-              (e) => !["queue", "decision", "buffer"].includes(e.data.type),
-            )
-            .sort((a, b) => (Number(a.data.x) || 0) - (Number(b.data.x) || 0))
-            .slice(0, 4)
-            .map((e, i) => (
-              <button key={e.id} onClick={() => s.navigate("mapa", e.id)}>
-                <Workflow size={15} />
-                <strong>{e.data.title}</strong>
-                {i < 3 && <span>→</span>}
-              </button>
-            ))}
-        </div>
-      </div>
-      <div className="st-stats">
-        {[
-          [Layers, steps.length, "Pasos del proceso", "mapa"],
-          [GitFork, links.length, "Conexiones", "mapa"],
-          [Target, objectives.length, "Objetivos VDC", "vdc"],
-          [ClipboardCheck, pending.length, "Asuntos ICE abiertos", "ice"],
-        ].map(([I, n, t, v]) => {
-          const Icon = I as typeof Layers;
-          return (
-            <button key={String(t)} onClick={() => s.navigate(v as any)}>
-              <Icon size={18} />
-              <strong>{String(n)}</strong>
-              <span>{String(t)}</span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="st-split">
-        <div className="st-card">
-          <div className="st-cardtitle">
-            <ClipboardCheck size={19} />
-            <h2>Pendientes de coordinación</h2>
-          </div>
-          {pending.length ? (
-            pending.slice(0, 5).map((e) => (
-              <button
-                className="st-row"
-                key={e.id}
-                onClick={() => s.navigate("ice", e.id)}
-              >
-                <span>
-                  <strong>{e.data.title}</strong>
-                  <small>
-                    {e.data.owner || "Por asignar"} · {e.data.status}
-                  </small>
-                </span>
-                <ChevronRight size={16} />
-              </button>
-            ))
-          ) : (
-            <p>El equipo está al día.</p>
-          )}
-        </div>
-        <div className="st-card">
-          <div className="st-cardtitle">
-            <Gauge size={19} />
-            <h2>Revisión del proyecto</h2>
-          </div>
-          {[
-            ["gerencia", "Objetivos y decisiones", "Dashboard gerencial"],
-            [
-              "operacion",
-              "Restricciones y responsables",
-              "Dashboard operativo",
-            ],
-            ["vdc", "Mapa de interrelaciones", "Factores y objetivos"],
-          ].map(([v, title, subtitle]) => (
-            <button
-              className="st-row"
-              key={v}
-              onClick={() => s.navigate(v as any)}
-            >
-              <span>
-                <strong>{title}</strong>
-                <small>{subtitle}</small>
-              </span>
-              <ArrowUpRight size={16} />
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }

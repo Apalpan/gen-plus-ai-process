@@ -10,22 +10,55 @@ import ReactFlow, {
 } from "reactflow";
 import { ArrowUpRight, Crosshair, Network } from "lucide-react";
 import { useStudio, type Entity } from "../shared";
+import { metricForBinding } from "../editor/metricCatalog";
+import { calculateMetric } from "./metrics";
+import type { MetricData, ObservationData } from "./types";
 import { validateVdcGraph } from "./validation";
 
-const columns = ["FC", "ProdO", "PO", "CO"];
+const columns = ["MET", "ACT", "FC", "ProdO", "PO", "CO"];
 const titles = [
+  "Métrica y evidencia",
+  "Actividad y medición",
   "Factor controlable",
   "Objetivo de producción",
   "Objetivo del proyecto",
   "Objetivo del cliente",
 ];
-const paths = ["#527e83", "#3366b6", "#765aae", "#af701b"];
+const paths = [
+  "#0f766e",
+  "#1a759f",
+  "#527e83",
+  "#3366b6",
+  "#765aae",
+  "#af701b",
+];
+function measurementSummary(value: unknown) {
+  if (!Array.isArray(value) || !value.length) return "Sin medición";
+  return value
+    .map((binding: any) => {
+      const code = String(binding.code || binding.id || "métrica");
+      const metric = metricForBinding(binding);
+      const observed = binding.observed ?? binding.value;
+      const unit = binding.unit || metric?.unit || "";
+      return (
+        (metric?.label || code) +
+        (observed === null || observed === undefined
+          ? " · sin valor"
+          : " · " + observed + " " + unit)
+      );
+    })
+    .join(" · ");
+}
 type Card = {
   title: string;
   level: string;
   detail: string;
   active: boolean;
   dim: boolean;
+  relatedId?: string;
+  stepId?: string;
+  objectiveId?: string;
+  relatedNodeIds?: string[];
 };
 function GraphCard({ data }: NodeProps<Card>) {
   const color = paths[columns.indexOf(data.level)] || paths[0];
@@ -56,6 +89,83 @@ export function RelationshipGraph() {
     (e) => e.kind === "vdc-factor" || e.kind === "vdc-objective",
   );
   const selected = entities.find((e) => e.id === focus);
+  const steps = entities.filter((e) => e.kind === "step");
+  const vdcMetrics = entities.filter((e) => e.kind === "vdc-metric");
+  const vdcMetricResults = new Map(
+    vdcMetrics.map((metric) => [
+      metric.id,
+      calculateMetric(
+        metric.data as MetricData,
+        entities
+          .filter(
+            (entity) =>
+              entity.kind === "vdc-observation" &&
+              entity.data.metricId === metric.id,
+          )
+          .map((entity) => entity.data as ObservationData),
+      ),
+    ]),
+  );
+  const activityMetrics = steps.flatMap((step) =>
+    Array.isArray(step.data.metrics)
+      ? step.data.metrics.map((binding: any, index: number) => {
+          const code = String(binding.code || binding.id || `metric-${index}`);
+          const metric = metricForBinding(binding);
+          return {
+            id: `activity-metric:${step.id}:${code}`,
+            kind: "activity-metric",
+            rev: 0,
+            data: {
+              stepId: step.id,
+              title: metric?.label || code,
+              code,
+              unit: binding.unit || metric?.unit || "",
+              observed: binding.observed ?? binding.value ?? null,
+              target: binding.target ?? null,
+              period: binding.period || "Sin periodo",
+              quality: binding.quality || "SIN_DATO",
+              source: binding.source || "Sin fuente",
+            },
+          } as Entity;
+        })
+      : [],
+  );
+  const legacyMetrics = entities
+    .filter(
+      (entity) =>
+        entity.kind === "legacy-metadata" && Array.isArray(entity.data.metrics),
+    )
+    .flatMap((metadata) =>
+      (metadata.data.metrics as any[]).map(
+        (metric, index) =>
+          ({
+            id:
+              "legacy-metric:" +
+              metadata.id +
+              ":" +
+              String(metric.id || metric.code || index),
+            kind: "legacy-metric",
+            rev: 0,
+            data: {
+              title:
+                metric.name ||
+                metric.label ||
+                metric.code ||
+                "Métrica histórica",
+              metricId: metric.id || metric.code || String(index),
+              relatedNodeIds: Array.isArray(metric.relatedNodeIds)
+                ? metric.relatedNodeIds
+                : [],
+              currentValue: metric.currentValue ?? "Sin dato",
+              targetText: metric.target ?? "Sin meta",
+              unit: metric.unit || "",
+              formula: metric.formula || "Sin fórmula",
+              source: metric.dataSource || "Sin fuente",
+              frequency: metric.frequency || "Sin frecuencia",
+            },
+          }) as Entity,
+      ),
+    );
   const links = entities.filter((e) => e.kind === "vdc-link");
   const implied = nodes
     .filter(
@@ -81,7 +191,83 @@ export function RelationshipGraph() {
           },
         }) as Entity,
     );
-  const relations = [...links, ...implied];
+  const stepRelations = steps.flatMap((step) => {
+    const targets = [step.data.factorId, step.data.objectiveId].filter(Boolean);
+    return targets.map(
+      (targetId) =>
+        ({
+          id: "derived-step:" + step.id + ":" + targetId,
+          kind: "actividad",
+          rev: 0,
+          data: {
+            sourceId: step.id,
+            targetId,
+            reason: "Actividad vinculada",
+            evidenceStatus: "ASIGNACIÓN",
+          },
+        }) as Entity,
+    );
+  });
+  const metricRelations = [
+    ...vdcMetrics
+      .filter((metric) => metric.data.objectiveId)
+      .map(
+        (metric) =>
+          ({
+            id: "derived-vdc-metric:" + metric.id,
+            kind: "medicion",
+            rev: 0,
+            data: {
+              sourceId: metric.id,
+              targetId: metric.data.objectiveId,
+              reason: "Métrica del objetivo",
+              evidenceStatus: "ASIGNACIÓN",
+            },
+          }) as Entity,
+      ),
+    ...activityMetrics.map(
+      (metric) =>
+        ({
+          id: "derived-activity-metric:" + metric.id,
+          kind: "medicion",
+          rev: 0,
+          data: {
+            sourceId: metric.id,
+            targetId: metric.data.stepId,
+            reason: "Medición de actividad",
+            evidenceStatus:
+              metric.data.quality === "OBSERVADO" &&
+              metric.data.source !== "Sin fuente"
+                ? "RESPALDADA"
+                : "ASIGNACIÓN",
+          },
+        }) as Entity,
+    ),
+    ...legacyMetrics.flatMap((metric) =>
+      (metric.data.relatedNodeIds as string[])
+        .filter((stepId) => steps.some((step) => step.id === stepId))
+        .map(
+          (stepId) =>
+            ({
+              id: "derived-legacy-metric:" + metric.id + ":" + stepId,
+              kind: "referencia-caso",
+              rev: 0,
+              data: {
+                sourceId: metric.id,
+                targetId: stepId,
+                reason: "Referencia del caso histórico",
+                evidenceStatus: "ASIGNACIÓN",
+              },
+            }) as Entity,
+        ),
+    ),
+  ];
+  const relations = [
+    ...links,
+    ...implied,
+    ...stepRelations,
+    ...metricRelations,
+  ];
   const reachable = new Set<string>();
   function walk(start: string, up: boolean) {
     const seen = new Set([start]);
@@ -99,14 +285,45 @@ export function RelationshipGraph() {
     }
     seen.forEach((id) => reachable.add(id));
   }
-  if (focus && nodes.some((n) => n.id === focus)) {
+  if (
+    focus &&
+    [
+      ...nodes,
+      ...vdcMetrics,
+      ...steps,
+      ...activityMetrics,
+      ...legacyMetrics,
+    ].some((n) => n.id === focus)
+  ) {
     if (direction !== "abajo") walk(focus, true);
     if (direction !== "arriba") walk(focus, false);
   }
-  const ranked = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
-  const rows = [0, 0, 0, 0];
+  const ranked = [
+    ...nodes,
+    ...vdcMetrics,
+    ...steps.filter(
+      (step) =>
+        step.data.factorId ||
+        step.data.objectiveId ||
+        metricRelations.some((edge) => edge.data.targetId === step.id),
+    ),
+    ...activityMetrics,
+    ...legacyMetrics,
+  ].sort((a, b) => a.id.localeCompare(b.id));
+  const rows = [0, 0, 0, 0, 0, 0];
   const boxes = ranked.map((n) => {
-    const level = n.kind === "vdc-factor" ? "FC" : n.data.level;
+    const level =
+      n.kind === "vdc-metric" ||
+      n.kind === "activity-metric" ||
+      n.kind === "legacy-metric"
+        ? "MET"
+        : n.kind === "step"
+          ? "ACT"
+          : n.kind === "vdc-factor"
+            ? "FC"
+            : n.data.level;
+    const metricResult =
+      n.kind === "vdc-metric" ? vdcMetricResults.get(n.id) : null;
     const col = Math.max(0, columns.indexOf(level)),
       row = rows[col]++;
     return {
@@ -117,17 +334,69 @@ export function RelationshipGraph() {
       connectable: false,
       data: {
         level,
-        title: n.data.title,
+        stepId: n.data.stepId,
+        objectiveId: n.kind === "vdc-metric" ? n.data.objectiveId : undefined,
+        relatedNodeIds:
+          n.kind === "legacy-metric" ? n.data.relatedNodeIds : undefined,
+        title: n.kind === "vdc-metric" ? n.data.label : n.data.title,
         detail:
-          n.kind === "vdc-factor"
-            ? n.data.owner +
-              " · " +
-              (n.data.completed ? "Ejecutado" : "Pendiente")
-            : n.data.target,
+          n.kind === "legacy-metric"
+            ? [
+                "Referencia del caso",
+                n.data.currentValue + (n.data.unit ? " " + n.data.unit : ""),
+                n.data.targetText + (n.data.unit ? " " + n.data.unit : ""),
+                n.data.frequency,
+                n.data.source,
+                n.data.formula,
+              ].join(" · ")
+            : n.kind === "activity-metric"
+              ? [
+                  n.data.observed === null
+                    ? "Sin valor"
+                    : "Valor " + n.data.observed + " " + n.data.unit,
+                  n.data.target === null
+                    ? "Sin meta"
+                    : "Meta " + n.data.target + " " + n.data.unit,
+                  n.data.quality + " · " + n.data.period,
+                  n.data.source,
+                ].join(" · ")
+              : n.kind === "vdc-metric"
+                ? [
+                    metricResult?.current === null ||
+                    metricResult?.current === undefined
+                      ? "Sin valor"
+                      : "Valor " +
+                        metricResult.current +
+                        " " +
+                        metricResult.unit,
+                    "Meta " + metricResult?.target + " " + metricResult?.unit,
+                    metricResult?.status || "sin_dato",
+                    metricResult?.period || "sin corte",
+                    metricResult?.quality || "SIN_DATO",
+                    n.data.source || "Sin fuente",
+                  ].join(" · ")
+                : n.kind === "step"
+                  ? [
+                      n.data.owner || "Sin responsable",
+                      Array.isArray(n.data.experts) && n.data.experts.length
+                        ? n.data.experts.join(", ")
+                        : "Sin especialistas declarados",
+                      n.data.technology || "Sin tecnología",
+                      Array.isArray(n.data.metrics)
+                        ? measurementSummary(n.data.metrics)
+                        : "Sin medición",
+                    ].join(" · ")
+                  : n.kind === "vdc-factor"
+                    ? n.data.owner +
+                      " · " +
+                      (n.data.completed ? "Ejecutado" : "Pendiente")
+                    : n.data.target,
         active: focus === n.id,
         dim:
           (!!find &&
-            !n.data.title?.toLowerCase().includes(find.toLowerCase())) ||
+            !(String(n.data.title || "") + " " + String(n.data.label || ""))
+              .toLowerCase()
+              .includes(find.toLowerCase())) ||
           (reachable.size > 0 && !reachable.has(n.id)),
       },
     };
@@ -172,7 +441,6 @@ export function RelationshipGraph() {
       ? selected
       : null;
   const key = target?.kind === "vdc-factor" ? "factorId" : "objectiveId";
-  const steps = entities.filter((e) => e.kind === "step");
   const attached = target
     ? steps.filter((step) => step.data[key] === target.id)
     : [];
@@ -242,7 +510,20 @@ export function RelationshipGraph() {
           maxZoom={2.2}
           nodesConnectable={false}
           nodesDraggable={false}
-          onNodeClick={(_, n) => s.select(n.id)}
+          onNodeClick={(_, n) => {
+            s.select(n.id);
+            if (n.data.level === "ACT") s.navigate("mapa", n.id);
+            if (n.data.level === "MET" && n.data.stepId)
+              s.navigate("mapa", n.data.stepId);
+            if (n.data.level === "MET" && n.data.objectiveId)
+              s.navigate("vdc", n.data.objectiveId);
+            if (
+              n.data.level === "MET" &&
+              Array.isArray(n.data.relatedNodeIds) &&
+              n.data.relatedNodeIds[0]
+            )
+              s.navigate("mapa", n.data.relatedNodeIds[0]);
+          }}
           onEdgeClick={(_, edge) => {
             const l = relations.find((r) => r.id === edge.id);
             s.select(l?.kind === "asignacion" ? l.data.sourceId : edge.id);
@@ -261,6 +542,7 @@ export function RelationshipGraph() {
               <button key={e.id} onClick={() => s.navigate("mapa", e.id)}>
                 Actividad · {e.data.title}
                 <ArrowUpRight size={14} />
+                <small>{measurementSummary(e.data.metrics)}</small>
               </button>
             ))}
             {follow.map((e) => (

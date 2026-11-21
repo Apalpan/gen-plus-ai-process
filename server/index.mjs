@@ -531,6 +531,22 @@ async function handler(request, response) {
         workspace: { ...workspace, role: "owner" },
       });
     }
+    const overviewMatch = path.match(/^\/api\/workspaces\/([^/]+)\/overview$/);
+    if (overviewMatch && method === "GET") {
+      const workspaceId = overviewMatch[1];
+      if (!membership(workspaceId, currentUser.id)) throw httpError(403, "forbidden");
+      const boards = db.prepare(`
+        SELECT b.id, b.title, b.board_rev AS revision,
+          COUNT(CASE WHEN e.kind='step' THEN 1 END) AS steps,
+          COUNT(CASE WHEN e.kind='vdc-objective' THEN 1 END) AS objectives,
+          COUNT(CASE WHEN e.kind IN ('ice-action','ice-restriction','ice-decision')
+            AND COALESCE(json_extract(e.data_json,'$.status'),'') NOT IN ('verificado','descartado') THEN 1 END) AS openIce,
+          COALESCE(MAX(e.updated_at), b.created_at) AS updatedAt
+        FROM boards b LEFT JOIN entities e ON e.board_id=b.id AND e.deleted_at IS NULL
+        WHERE b.workspace_id=? GROUP BY b.id ORDER BY updatedAt DESC, b.id
+      `).all(workspaceId);
+      return respond(response, 200, { boards });
+    }
     const memberMatch = path.match(
       /^\/api\/workspaces\/([^/]+)\/members(?:\/([^/]+))?$/,
     );

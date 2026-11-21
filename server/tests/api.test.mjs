@@ -118,6 +118,13 @@ try {
   });
   assert.equal(boardResult.response.status, 201);
   const boardId = boardResult.content.board.id;
+  const overviewUrl = `/api/workspaces/${workspaceId}/overview`;
+  const overview = await request(overviewUrl, { cookie: reader.cookie });
+  assert.equal(overview.response.status, 200);
+  assert.equal(overview.content.boards[0].id, boardId);
+  assert.equal(overview.content.boards[0].steps, 0);
+  const privateOverview = await request(overviewUrl, { cookie: outsider.cookie });
+  assert.equal(privateOverview.response.status, 403);
 
   const workspaces = await request("/api/workspaces", { cookie: owner.cookie });
   assert.equal(workspaces.content.workspaces[0].boards[0].id, boardId);

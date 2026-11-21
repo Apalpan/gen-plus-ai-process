@@ -5,7 +5,7 @@ import json
 from playwright.sync_api import sync_playwright, expect
 out=Path(os.environ.get('AI_PROCESS_QA_DIR',tempfile.mkdtemp(prefix='ai-process-qa-')))
 out.mkdir(parents=True,exist_ok=True)
-base='http://127.0.0.1:5178'
+base=os.environ.get('AI_PROCESS_QA_URL','http://127.0.0.1:5178').rstrip('/')
 with sync_playwright() as pw:
     b=pw.chromium.launch(channel='chrome')
     p=b.new_page(viewport={'width':1440,'height':900})
@@ -13,10 +13,10 @@ with sync_playwright() as pw:
     errors=[]
     p.on('pageerror',lambda error:errors.append(str(error)))
     p.goto(base)
-    p.get_by_role('button',name='Abrir demo local').click()
+    p.get_by_role('button',name='Abrir demo').click()
     def nav(name):
         p.locator('.st-rail nav').get_by_role('button',name=name,exact=True).click()
-    expect(p.get_by_role('heading',name='Inicio',exact=True)).to_be_visible()
+    expect(p.get_by_role('heading',name='Dashboard',exact=True)).to_be_visible()
     nav('Producción')
     form=p.locator('form').filter(has=p.locator('[name=denominator]'))
     form.locator('[name=metricId]').select_option('metric-ppc')
@@ -30,13 +30,13 @@ with sync_playwright() as pw:
         expect(kpi).to_contain_text('95 %')
         p.screenshot(path=str(out/(tab.lower()+'-corte.png')))
     kpi.click()
-    expect(p.get_by_role('heading',name='Mapa de interrelaciones',exact=True)).to_be_visible()
+    expect(p.get_by_role('heading',name='Framework BDC',exact=True)).to_be_visible()
     fc=p.locator('.rg-flow [data-id="fc-qa"]')
     fc.click()
     expect(p.locator('.rg-detail')).to_contain_text('Diseñar paquete')
     p.locator('.rg-detail').get_by_role('button',name='Actividad · Diseñar paquete').click()
     expect(p.locator('.st-canvas-work')).to_be_visible()
-    nav('Interrelaciones VDC')
+    nav('Framework BDC')
     p.locator('.rg-flow [data-id="fc-qa"]').click()
     p.screenshot(path=str(out/'interrelaciones.png'))
     p.locator('.rg-detail').get_by_role('button',name='ICE · Liberar el despiece de anclajes').click()

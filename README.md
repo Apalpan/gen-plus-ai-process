@@ -4,6 +4,8 @@ Mapeo colaborativo, gestión VDC y coordinación ICE en un mismo espacio. [Abrir
 
 Selecciona **Abrir demo** para recorrer el ejemplo de prefabricados en un espacio privado. Para reunir a tu equipo en un mismo mapa, cada integrante crea su cuenta y el propietario lo incorpora desde **Equipo y revisiones**.
 
+El **Dashboard** abre con el resumen gerencial del espacio. **Objetivos** y **Framework BDC** conectan los compromisos del proyecto con las actividades y las mediciones. **Abrir mapeador** lleva al flujo por carriles. [Guía del primer taller y propuesta de validación](docs/ai-process-v2/MEJORA-MAPEADOR.md)
+
 La v2 usa React Flow y Node.js 24, con SQLite en desarrollo y PostgreSQL para la persistencia en Vercel.
 
 ```sh

@@ -55,13 +55,52 @@ export interface StepData {
   condition?: string;
   reworkTo?: string;
   controls?: { entry: string; exit: string; evidence: string };
+  /**
+   * A step keeps its operational measures with the process record. Older maps
+   * do not need this field and continue to render normally.
+   */
+  metrics?: StepMetricBinding[];
+  /** IDs de métricas preservados al importar un caso histórico. */
+  metricIds?: string[];
+  technology?: string;
+  /** Persona o rol responsable de ejecutar o controlar la actividad. */
+  person?: string;
+  role?: string;
+  /** Especialistas que participan. El dueño sigue siendo owner. */
+  experts?: string[];
+  /** Campos de la fuente histórica para trazabilidad e importación reversible. */
+  legacy?: Record<string, unknown>;
+}
+
+export type MetricQuality =
+  "OBSERVADO" | "ESTIMADO" | "SUPUESTO" | "DATO_DEMO" | "SIN_DATO";
+
+export interface StepMetricBinding {
+  /** code is current. id/value/unit retain maps drafted before this catalogue. */
+  code?: string;
+  id?: string;
+  observed?: number | null;
+  value?: number | null;
+  unit?: string;
+  target?: number | null;
+  period?: string;
+  source?: string;
+  quality?: MetricQuality;
+  /** Definición persistible de una métrica creada por el equipo. */
+  definition?: {
+    id: string;
+    name: string;
+    unit: string;
+    formula: string;
+    direction: "higher" | "lower" | "target";
+  };
 }
 
 export interface EdgeData {
   source: string;
   target: string;
   label?: string;
-  type?: string;
+  type?: "sequence" | "handoff" | "information" | "rework" | "dependency";
 }
 
 export const asStep = (entity: StudioEntity): StepData =>

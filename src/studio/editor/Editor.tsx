@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
+  MarkerType,
   MiniMap,
   applyNodeChanges,
   type Connection,
@@ -24,10 +25,24 @@ import {
   Trash2,
   Upload,
   Users,
+  CircleDot,
+  Database,
+  Diamond,
+  Flag,
+  GripVertical,
+  Link2,
+  Route,
 } from "lucide-react";
 import { api, uid, useStudio, type Change, type Entity } from "../shared";
 import { createTemplateEntities, launchTemplates } from "./templateFactory";
 import { asEdge, asStep, type StepData, type StudioEntity } from "./types";
+import StepMetrics, { metricSummary } from "./StepMetrics";
+import {
+  buildHistoricalCase,
+  listHistoricalCases,
+  type HistoricalCase,
+} from "./historicalCases";
+import "./mapper.css";
 
 type UndoEntry = { before: Entity[]; after: Entity[]; ids: Set<string> };
 type View = "canvas" | "table" | "chain" | "compare";
@@ -36,6 +51,32 @@ const box = "rounded-xl border border-[#dce5f2] bg-white shadow-sm";
 const copy = (items: Entity[]) =>
   items.map((item) => ({ ...item, data: structuredClone(item.data) }));
 const local = (item: Entity) => item as StudioEntity;
+const shapeFor = (type: StepData["type"]) =>
+  ({
+    activity: "activity",
+    decision: "decision",
+    queue: "cylinder",
+    buffer: "cylinder",
+    evidence: "cylinder",
+    start: "circle",
+    end: "circle",
+    handoff: "handoff",
+  })[type] ?? "activity";
+const edgeStyle = (type?: string) =>
+  ({
+    sequence: { stroke: "#3f5f82", strokeWidth: 2 },
+    handoff: { stroke: "#0f766e", strokeWidth: 2, strokeDasharray: "9 5" },
+    information: { stroke: "#7b61b8", strokeWidth: 2, strokeDasharray: "2 5" },
+    dependency: { stroke: "#b25d19", strokeWidth: 2, strokeDasharray: "9 5" },
+    rework: { stroke: "#bd3c54", strokeWidth: 2, strokeDasharray: "6 4" },
+  })[type ?? "sequence"] ?? { stroke: "#3f5f82", strokeWidth: 2 };
+const laneGeometry = (lanes: Entity[]) =>
+  new Map(
+    lanes.map((lane, index) => [
+      lane.id,
+      { top: 76 + index * 174, height: 162, nodeY: 96 + index * 174 },
+    ]),
+  );
 function saveFile(name: string, content: string, type = "text/plain") {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement("a");
@@ -105,6 +146,7 @@ export function Editor() {
   const [panelWidth, setPanelWidth] = useState(306);
   const [autoShare, setAutoShare] = useState(true);
   const [selected, setSelected] = useState<string | null>(selection);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [orientation, setOrientation] = useState<"horizontal" | "vertical">(
     "horizontal",
@@ -113,6 +155,11 @@ export function Editor() {
   const [redo, setRedo] = useState<UndoEntry[]>([]);
   const [preview, setPreview] = useState<Entity[] | null>(null);
   const [previewErrors, setPreviewErrors] = useState<string[]>([]);
+  const [historicalCases, setHistoricalCases] = useState<HistoricalCase[]>([]);
+  const [historicalPreview, setHistoricalPreview] = useState<{
+    title: string;
+    entities: Entity[];
+  } | null>(null);
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [baseId, setBaseId] = useState("");
   const [revisionBase, setRevisionBase] = useState<Entity[] | null>(null);
@@ -156,6 +203,11 @@ export function Editor() {
       .then((result) => setRevisions(result.revisions ?? []))
       .catch(() => setRevisions([]));
   }, [board.id]);
+  useEffect(() => {
+    void listHistoricalCases()
+      .then(setHistoricalCases)
+      .catch(() => setHistoricalCases([]));
+  }, []);
   const steps = useMemo(
     () => draft.filter((item) => item.kind === "step"),
     [draft],
@@ -164,6 +216,7 @@ export function Editor() {
     () => draft.filter((item) => item.kind === "lane"),
     [draft],
   );
+  const mapLanes = useMemo(() => laneGeometry(lanes), [lanes]);
   const edges = useMemo(
     () => draft.filter((item) => item.kind === "edge"),
     [draft],
@@ -177,6 +230,8 @@ export function Editor() {
     [draft],
   );
   const selectedStep = steps.find((item) => item.id === selected) ?? null;
+  const selectedEdgeEntity =
+    edges.find((item) => item.id === selectedEdge) ?? null;
   const change = (next: Entity[]) => {
     if (!canEdit) return;
     editSerial.current++;
@@ -205,7 +260,11 @@ export function Editor() {
   };
   const upsert = (item: Entity) =>
     change([...draft.filter((current) => current.id !== item.id), item]);
-  const create = (type: StepData["type"] = "activity") => {
+  const create = (
+    type: StepData["type"] = "activity",
+    predecessor?: Entity,
+  ) => {
+    if (!canEdit) return;
     const objectiveId = objectives.some((item) => item.id === selection)
       ? selection
       : undefined;
@@ -215,25 +274,63 @@ export function Editor() {
       rev: 0,
       data: { name: "Proceso", color: "#2862d7" },
     };
+    const laneId =
+      predecessor?.data.laneId ||
+      selectedStep?.data.laneId ||
+      lanes[0]?.id ||
+      defaultLane.id;
+    const laneSteps = steps.filter((step) => step.data.laneId === laneId);
+    const x =
+      Math.max(-95, ...laneSteps.map((step) => Number(step.data.x) || 0)) + 245;
+    const y = mapLanes.get(laneId)?.nodeY ?? 110;
     const item: Entity = {
       id: uid("step"),
       kind: "step",
       rev: 0,
       data: {
-        title: type === "decision" ? "¿Qué se decide?" : "Nueva actividad",
+        title:
+          type === "decision"
+            ? "¿Qué se decide?"
+            : type === "start"
+              ? "Inicio del proceso"
+              : type === "end"
+                ? "Fin aceptado"
+                : type === "queue" || type === "buffer"
+                  ? "Cola de trabajo"
+                  : type === "evidence"
+                    ? "Dato o evidencia"
+                    : "Nueva actividad",
         type,
-        laneId: lanes[0]?.id ?? defaultLane.id,
+        laneId,
         owner: user.name,
-        x: 160 + steps.length * 30,
-        y: 140 + (steps.length % 3) * 110,
+        x,
+        y,
         status: "draft",
         objectiveId,
       },
     };
-    change([...draft, ...(lanes.length ? [] : [defaultLane]), item]);
+    const link: Entity[] = predecessor
+      ? [
+          {
+            id: uid("edge"),
+            kind: "edge",
+            rev: 0,
+            data: { source: predecessor.id, target: item.id, type: "sequence" },
+          },
+        ]
+      : [];
+    change([...draft, ...(lanes.length ? [] : [defaultLane]), item, ...link]);
     setInspector(true);
+    setSelectedEdge(null);
     setSelected(item.id);
     select(item.id);
+    if (view === "canvas")
+      requestAnimationFrame(() =>
+        flow.current?.setCenter(x + 100, y + 52, {
+          zoom: Math.max(flow.current.getZoom(), 0.7),
+          duration: 180,
+        }),
+      );
   };
   const deleteStep = (id: string) => {
     const edgeIds = edges
@@ -378,15 +475,29 @@ export function Editor() {
     changes.forEach((item) => {
       if (item.type === "position" && item.position && !item.dragging) {
         const source = draft.find((current) => current.id === item.id);
-        if (source?.kind === "step")
+        if (source?.kind === "step") {
+          const closestLane = lanes
+            .map((lane) => {
+              const geometry = mapLanes.get(lane.id)!;
+              return {
+                lane,
+                distance: Math.abs(
+                  item.position!.y + 62 - (geometry.top + geometry.height / 2),
+                ),
+              };
+            })
+            .sort((a, b) => a.distance - b.distance)[0]?.lane;
+          const geometry = closestLane && mapLanes.get(closestLane.id);
           upsert({
             ...source,
             data: {
               ...asStep(local(source)),
               x: item.position.x,
-              y: item.position.y,
+              y: geometry?.nodeY ?? item.position.y,
+              laneId: closestLane?.id ?? asStep(local(source)).laneId,
             },
           });
+        }
       }
     });
   };
@@ -396,14 +507,21 @@ export function Editor() {
         if (item.kind !== "step") return item;
         const index = steps.findIndex((step) => step.id === item.id);
         const data = asStep(local(item));
+        const laneIndex = Math.max(
+          0,
+          lanes.findIndex((lane) => lane.id === data.laneId),
+        );
         return {
           ...item,
           data: {
             ...data,
-            x: orientation === "horizontal" ? 110 + index * 230 : 160,
+            x:
+              orientation === "horizontal"
+                ? 140 + index * 232
+                : 180 + laneIndex * 235,
             y:
               orientation === "horizontal"
-                ? 160 + (index % 2) * 125
+                ? (mapLanes.get(data.laneId)?.nodeY ?? 96 + laneIndex * 174)
                 : 90 + index * 125,
           },
         };
@@ -423,6 +541,35 @@ export function Editor() {
     if (await studio.createCopy("Copia importada · " + board.title, preview)) {
       setPreview(null);
       notify("Copia importada creada.");
+    }
+  };
+  const previewHistorical = async (id: string) => {
+    try {
+      const built = await buildHistoricalCase(id);
+      const issues = validateMap(built.entities);
+      if (issues.length) {
+        notify(issues[0]);
+        return;
+      }
+      setHistoricalPreview(built);
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? error.message
+          : "No se pudo abrir el caso histórico.",
+      );
+    }
+  };
+  const createHistoricalCopy = async () => {
+    if (!historicalPreview) return;
+    if (
+      await studio.createCopy(
+        historicalPreview.title,
+        historicalPreview.entities,
+      )
+    ) {
+      setHistoricalPreview(null);
+      notify("Caso histórico creado como copia.");
     }
   };
   const loadRevision = async (id: string) => {
@@ -470,22 +617,22 @@ export function Editor() {
         )
         .map((item) => {
           const data = asStep(local(item));
+          const shape = shapeFor(data.type);
+          const geometry = mapLanes.get(data.laneId);
           return {
             id: item.id,
-            position: { x: data.x, y: data.y },
+            position: { x: data.x, y: geometry?.nodeY ?? data.y },
             data: { label: <Card item={item} /> },
+            className: `ed-process-node ed-node-${shape}`,
             style: {
-              width: 190,
-              borderRadius: 12,
-              border:
-                selected === item.id
-                  ? "2px solid #2165ff"
-                  : "1px solid #dce5f2",
-              background: "#fff",
+              width:
+                shape === "circle" ? 118 : shape === "decision" ? 154 : 208,
+              minHeight: shape === "circle" ? 118 : 92,
+              border: selected === item.id ? "2px solid #2165ff" : undefined,
             },
           };
         }),
-    [filter, selected, steps],
+    [filter, mapLanes, selected, steps],
   );
   useEffect(() => setFlowNodes(nodes), [draft, filter, selected]);
   const flowEdges: Edge[] = edges.map((item) => {
@@ -495,16 +642,26 @@ export function Editor() {
       source: data.source,
       target: data.target,
       label: data.label,
-      style: { stroke: "#5b6c87" },
+      style: edgeStyle(data.type),
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: edgeStyle(data.type).stroke,
+      },
+      className: selectedEdge === item.id ? "ed-edge-active" : "",
+      labelStyle: { fill: "#294866", fontSize: 10, fontWeight: 700 },
+      labelBgPadding: [5, 3],
+      labelBgBorderRadius: 4,
+      labelBgStyle: { fill: "#ffffff", fillOpacity: 0.92 },
     };
   });
   return (
     <section className="ed-workbench flex h-full min-h-0 flex-col bg-[#f7f9fd] text-[#0e2a6b]">
       <header className="flex flex-wrap items-center gap-2 border-b border-[#dce5f2] bg-white px-4 py-3">
         <div className="mr-auto">
-          <b className="text-sm">Mapa de proceso</b>
+          <b className="text-sm">Mapeador de procesos</b>
           <p className="text-xs text-[#5b6c87]">
-            {steps.length} pasos · {edges.length} conexiones ·{" "}
+            {steps.length} elementos · {lanes.length} carriles · {edges.length}{" "}
+            flujos ·{" "}
             {saving
               ? "compartiendo…"
               : dirty
@@ -541,6 +698,15 @@ export function Editor() {
         >
           <GitCompareArrows size={16} />
           Decisión
+        </button>
+        <button
+          disabled={!canEdit}
+          onClick={() => create("evidence")}
+          className="btn-secondary"
+          title="Dato, documento, sistema o evidencia"
+        >
+          <Database size={16} />
+          Dato
         </button>
         <button
           disabled={!canEdit || !dirty || saving}
@@ -607,6 +773,12 @@ export function Editor() {
               }}
               className="ed-canvas relative h-full min-h-[520px] overflow-hidden rounded-xl border border-[#dce5f2] bg-[radial-gradient(circle_at_top,#e9f0ff,white_48%)]"
             >
+              <div className="ed-canvas-title">
+                <span>Mapa actual</span>
+                <small>
+                  Arrastra, conecta y selecciona para documentar cada paso
+                </small>
+              </div>
               <div className="absolute z-10 m-3">
                 <button
                   className="btn-secondary"
@@ -647,6 +819,54 @@ export function Editor() {
                   </div>
                 )}
               </div>
+              <div
+                className="ed-shape-palette"
+                aria-label="Añadir símbolo al proceso"
+              >
+                <span>Agregar</span>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => create("start")}
+                  title="Inicio"
+                >
+                  <CircleDot size={16} />
+                </button>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => create("activity")}
+                  title="Actividad"
+                >
+                  <GripVertical size={16} />
+                </button>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => create("decision")}
+                  title="Decisión"
+                >
+                  <Diamond size={16} />
+                </button>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => create("queue")}
+                  title="Cola o almacenamiento"
+                >
+                  <Database size={16} />
+                </button>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => create("handoff")}
+                  title="Transferencia entre equipos"
+                >
+                  <Route size={16} />
+                </button>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => create("end")}
+                  title="Fin o aceptación"
+                >
+                  <Flag size={16} />
+                </button>
+              </div>
               <ReactFlow
                 onInit={(v) => {
                   flow.current = v;
@@ -657,6 +877,7 @@ export function Editor() {
                 nodesConnectable={canEdit}
                 onPaneClick={() => {
                   setSelected(null);
+                  setSelectedEdge(null);
                   select(null);
                 }}
                 onConnect={canEdit ? connect : undefined}
@@ -664,12 +885,20 @@ export function Editor() {
                 onNodeClick={(_, node) => {
                   setInspector(true);
                   setSelected(node.id);
+                  setSelectedEdge(null);
                   select(node.id);
+                }}
+                onEdgeClick={(_, edge) => {
+                  setInspector(true);
+                  setSelected(null);
+                  setSelectedEdge(edge.id);
+                  select(null);
                 }}
                 minZoom={0.08}
                 fitView
               >
-                <Background gap={24} color="#dce5f2" />
+                <Swimlanes lanes={lanes} steps={steps} />
+                <Background gap={22} color="#d5e3f1" />
                 <Cursors />
                 <Controls />
                 <MiniMap nodeColor="#2165ff" />
@@ -795,6 +1024,14 @@ export function Editor() {
               )}
               {canEdit && selectedStep && (
                 <button
+                  className="btn-primary"
+                  onClick={() => create("activity", selectedStep)}
+                >
+                  <Plus size={15} /> Añadir actividad siguiente
+                </button>
+              )}
+              {canEdit && selectedStep && (
+                <button
                   className="btn-secondary"
                   onClick={() => {
                     const n = {
@@ -854,6 +1091,23 @@ export function Editor() {
                   }
                   onDelete={() => deleteStep(selectedStep.id)}
                 />
+              ) : selectedEdgeEntity ? (
+                <EdgeInspector
+                  item={selectedEdgeEntity}
+                  steps={steps}
+                  onPatch={(patch) =>
+                    upsert({
+                      ...selectedEdgeEntity,
+                      data: { ...asEdge(local(selectedEdgeEntity)), ...patch },
+                    })
+                  }
+                  onDelete={() => {
+                    change(
+                      draft.filter((item) => item.id !== selectedEdgeEntity.id),
+                    );
+                    setSelectedEdge(null);
+                  }}
+                />
               ) : (
                 <Tools
                   onTemplate={async (id) => {
@@ -887,6 +1141,15 @@ export function Editor() {
                       );
                   }}
                   onImport={parse}
+                  historicalCases={historicalCases}
+                  onPreviewHistorical={previewHistorical}
+                  edges={edges}
+                  steps={steps}
+                  onSelectEdge={(id) => {
+                    setSelected(null);
+                    setSelectedEdge(id);
+                    setInspector(true);
+                  }}
                 />
               )}
             </aside>
@@ -901,22 +1164,86 @@ export function Editor() {
           onConfirm={() => void importCopy()}
         />
       )}
+      {historicalPreview && (
+        <HistoricalPreviewModal
+          title={historicalPreview.title}
+          entities={historicalPreview.entities}
+          onCancel={() => setHistoricalPreview(null)}
+          onConfirm={() => void createHistoricalCopy()}
+        />
+      )}
     </section>
   );
 }
 
 function Card({ item }: { item: Entity }) {
   const data = asStep(local(item));
+  const typeName: Record<StepData["type"], string> = {
+    start: "Inicio",
+    activity: "Actividad",
+    decision: "Decisión",
+    handoff: "Transferencia",
+    evidence: "Dato / evidencia",
+    queue: "Cola / WIP",
+    buffer: "Buffer",
+    end: "Fin / aceptación",
+  };
+  const metricText = data.metrics?.length ? metricSummary(data.metrics) : "";
   return (
-    <div className="p-2.5">
-      <span className="text-[10px] font-bold uppercase text-[#2165ff]">
-        {data.type}
-      </span>
-      <p className="mt-1 text-sm font-semibold">{data.title}</p>
-      <p className="mt-1 text-xs text-[#5b6c87]">
+    <div className="ed-card">
+      <span className="ed-card__type">{typeName[data.type]}</span>
+      <span className="ed-card__title">{data.title}</span>
+      <span className="ed-card__owner">
         {data.owner || "Sin asignar"}
         {data.groupId ? ` · ${data.groupId}` : ""}
-      </p>
+      </span>
+      {metricText && <span className="ed-card__metric">{metricText}</span>}
+    </div>
+  );
+}
+/**
+ * Lanes live in flow coordinates. They use the current viewport transform so
+ * panning and zooming never detach a lane from the activities assigned to it.
+ * A lane's bounds are derived from its current member positions, including
+ * imported maps that carry arbitrary historic coordinates.
+ */
+function Swimlanes({ lanes, steps }: { lanes: Entity[]; steps: Entity[] }) {
+  const viewport = useViewport();
+  const positioned = steps.map((step) => ({
+    item: step,
+    data: asStep(local(step)),
+  }));
+  const minX = Math.min(...positioned.map(({ data }) => data.x), 0) - 135;
+  const maxX =
+    Math.max(...positioned.map(({ data }) => data.x + 220), 920) + 135;
+  const geometry = laneGeometry(lanes);
+  return (
+    <div
+      className="ed-swimlanes"
+      aria-hidden="true"
+      style={{
+        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+      }}
+    >
+      {lanes.map((lane) => {
+        const band = geometry.get(lane.id)!;
+        return (
+          <div
+            key={lane.id}
+            className="ed-swimlane"
+            style={{
+              left: minX,
+              top: band.top,
+              width: maxX - minX,
+              height: band.height,
+            }}
+          >
+            <span style={{ borderColor: String(lane.data.color || "#2165ff") }}>
+              {String(lane.data.name)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1223,6 +1550,7 @@ function Inspector({
         value={data.evidence || ""}
         onChange={(evidence) => onPatch({ evidence })}
       />
+      <StepMetrics data={data} onChange={onPatch} />
       <section className="border-t border-[#dce5f2] pt-4">
         <p className="text-sm font-bold">Conversación</p>
         {comments.map((entry) => (
@@ -1240,7 +1568,11 @@ function Inspector({
           placeholder="Comentar o pedir una acción"
           className="mt-2 w-full rounded-lg border border-[#dce5f2] p-2 text-sm"
         />
-        <button disabled={role === "reader"} onClick={onAdd} className="btn-primary mt-2">
+        <button
+          disabled={role === "reader"}
+          onClick={onAdd}
+          className="btn-primary mt-2"
+        >
           <Send size={14} />
           Publicar
         </button>
@@ -1252,6 +1584,63 @@ function Inspector({
       >
         <Trash2 size={15} />
         Eliminar paso y conexiones
+      </button>
+    </div>
+  );
+}
+function EdgeInspector({
+  item,
+  steps,
+  onPatch,
+  onDelete,
+}: {
+  item: Entity;
+  steps: Entity[];
+  onPatch: (patch: Record<string, unknown>) => void;
+  onDelete: () => void;
+}) {
+  const edge = asEdge(local(item));
+  const { canEdit } = useStudio();
+  const nameFor = (id: string) =>
+    asStep(local(steps.find((step) => step.id === id) ?? steps[0])).title;
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-bold uppercase text-[#2165ff]">
+        Flujo seleccionado
+      </p>
+      <div className="rounded-lg bg-[#f4f8fd] p-3 text-sm">
+        <b>{nameFor(edge.source)}</b>
+        <Link2 className="mx-2 inline" size={14} />
+        <b>{nameFor(edge.target)}</b>
+      </div>
+      <Select
+        label="Tipo de flujo"
+        value={edge.type || "sequence"}
+        onChange={(type) => onPatch({ type })}
+        items={[
+          { id: "sequence", name: "Secuencia · flecha continua" },
+          { id: "handoff", name: "Transferencia · flecha discontinua" },
+          { id: "information", name: "Información · flecha punteada" },
+          { id: "dependency", name: "Dependencia · flecha discontinua" },
+          { id: "rework", name: "Retrabajo · flecha discontinua" },
+        ]}
+      />
+      <Field
+        label="Etiqueta de la flecha"
+        value={edge.label || ""}
+        onChange={(label) => onPatch({ label: label || undefined })}
+      />
+      <p className="text-xs text-[#5b6c87]">
+        La dirección de la flecha describe hacia dónde avanza el trabajo, la
+        información o el retrabajo.
+      </p>
+      <button
+        disabled={!canEdit}
+        onClick={onDelete}
+        className="inline-flex items-center gap-1 text-sm font-semibold text-red-600"
+      >
+        <Trash2 size={15} />
+        Eliminar flujo
       </button>
     </div>
   );
@@ -1312,14 +1701,29 @@ function Tools({
   onTemplate,
   onExport,
   onImport,
+  historicalCases,
+  onPreviewHistorical,
+  edges,
+  steps,
+  onSelectEdge,
 }: {
   onTemplate: (id: string) => void;
   onExport: (type: "json" | "mermaid" | "markdown") => void;
   onImport: (file: File) => void;
+  historicalCases: HistoricalCase[];
+  onPreviewHistorical: (id: string) => void;
+  edges: Entity[];
+  steps: Entity[];
+  onSelectEdge: (id: string) => void;
 }) {
   return (
     <div>
-      <p className="text-xs font-bold uppercase text-[#2165ff]">Plantillas</p>
+      <p className="text-xs font-bold uppercase text-[#2165ff]">
+        Casos base reutilizables
+      </p>
+      <p className="mt-1 text-xs text-[#5b6c87]">
+        Abre cada caso como un proceso nuevo. El mapa activo no se sobrescribe.
+      </p>
       <div className="mt-3 space-y-2">
         {launchTemplates.map((template) => (
           <button
@@ -1331,9 +1735,67 @@ function Tools({
             <span className="mt-1 block text-xs text-[#5b6c87]">
               {template.description}
             </span>
+            <span className="mt-2 block text-[10px] font-semibold uppercase text-[#62809e]">
+              {template.stages.slice(0, 3).join(" → ")}
+              {template.stages.length > 3 ? " → …" : ""}
+            </span>
           </button>
         ))}
       </div>
+      <section className="mt-5 border-t border-[#dce5f2] pt-4">
+        <p className="text-xs font-bold uppercase text-[#2165ff]">
+          Casos históricos
+        </p>
+        <p className="mt-1 text-xs text-[#5b6c87]">
+          {historicalCases.length || 12} casos recuperados del mapeador
+          anterior.
+        </p>
+        <div className="mt-2 space-y-2">
+          {historicalCases.map((item) => (
+            <article
+              key={item.id}
+              className="rounded-lg border border-[#dce5f2] p-3"
+            >
+              <b className="block text-sm">{item.name}</b>
+              <span className="mt-1 block text-xs text-[#5b6c87]">
+                {item.description}
+              </span>
+              <button
+                className="btn-secondary mt-2"
+                onClick={() => void onPreviewHistorical(item.id)}
+              >
+                Previsualizar
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="mt-5 border-t border-[#dce5f2] pt-4">
+        <p className="text-xs font-bold uppercase text-[#2165ff]">Conexiones</p>
+        <p className="mt-1 text-xs text-[#5b6c87]">
+          Selecciona una flecha incluso cuando sus trazos se crucen.
+        </p>
+        <div className="mt-2 space-y-1">
+          {edges.map((edge) => {
+            const data = asEdge(local(edge));
+            const source = steps.find((step) => step.id === data.source);
+            const target = steps.find((step) => step.id === data.target);
+            return (
+              <button
+                key={edge.id}
+                className="w-full rounded-md border border-[#dce5f2] px-2 py-2 text-left text-xs hover:border-[#2165ff]"
+                onClick={() => onSelectEdge(edge.id)}
+              >
+                {asStep(local(source ?? steps[0])).title} →{" "}
+                {asStep(local(target ?? steps[0])).title}
+                <small className="ml-1 text-[#5b6c87]">
+                  · {data.type || "sequence"}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+      </section>
       <section className="mt-5 border-t border-[#dce5f2] pt-4">
         <p className="text-sm font-bold">Exportar</p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -1403,6 +1865,51 @@ function ImportModal({
             className="btn-primary"
             onClick={onConfirm}
           >
+            Crear copia
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function HistoricalPreviewModal({
+  title,
+  entities,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  entities: Entity[];
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const laneCount = entities.filter((item) => item.kind === "lane").length;
+  const stepCount = entities.filter((item) => item.kind === "step").length;
+  const edgeCount = entities.filter((item) => item.kind === "edge").length;
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-[#040f20]/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Previsualizar caso histórico"
+    >
+      <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+        <p className="text-xs font-bold uppercase text-[#2165ff]">
+          Caso histórico
+        </p>
+        <h2 className="mt-1 text-lg font-bold">{title}</h2>
+        <p className="mt-2 text-sm text-[#5b6c87]">
+          {laneCount} carriles · {stepCount} elementos · {edgeCount} conexiones.
+        </p>
+        <p className="mt-3 rounded-lg bg-[#f4f8fd] p-3 text-xs text-[#38536e]">
+          Se abre como copia independiente. El proceso activo y la fuente
+          histórica permanecen intactos.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button className="btn-secondary" onClick={onCancel}>
+            Cancelar
+          </button>
+          <button className="btn-primary" onClick={onConfirm}>
             Crear copia
           </button>
         </div>

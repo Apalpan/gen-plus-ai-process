@@ -1,0 +1,86 @@
+.step-metrics {
+  border-top: 1px solid #dce5f2;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+.step-metrics-head {
+  display: grid;
+  gap: 0.18rem;
+}
+.step-metrics-head small,
+.step-metric-detail small {
+  color: #5b6c87;
+}
+.step-metric-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+.step-metric-picker label {
+  border: 1px solid #dce5f2;
+  border-radius: 0.55rem;
+  padding: 0.45rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.4rem;
+  align-items: center;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.step-metric-picker label small {
+  grid-column: 2;
+  color: #5b6c87;
+  text-transform: capitalize;
+}
+.step-metric-detail {
+  border: 1px solid #dce5f2;
+  border-radius: 0.7rem;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+  background: #f9fbff;
+}
+.step-metric-detail header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+.step-metric-detail p {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #354664;
+}
+.step-metric-definition {
+  color: #5b6c87 !important;
+}
+.step-metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+.step-metric-grid label {
+  font-size: 0.7rem;
+  color: #5b6c87;
+  display: grid;
+  gap: 0.18rem;
+}
+.step-metric-grid input,
+.step-metric-grid select {
+  min-width: 0;
+  border: 1px solid #c9d6e8;
+  border-radius: 0.4rem;
+  padding: 0.35rem;
+  color: #1a2940;
+  background: #fff;
+}
+@media (max-width: 720px) {
+  .step-metric-picker,
+  .step-metric-grid {
+    grid-template-columns: 1fr;
+  }
+}

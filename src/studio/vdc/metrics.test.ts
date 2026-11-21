@@ -131,6 +131,11 @@ export function runVdcFixtures(): void {
   );
   require(incompatible.delta ===
     null, "Cortes de calidad distinta no deben producir delta comparable.");
+  const rate = {code:"rate", objectiveId:"o", label:"Salida", formula:"unidades/día", unit:"unidades/día", target:5, comparison:"gte" as const, frequency:"Semanal", owner:"Producción", source:"Registro", actionThreshold:"Revisar"};
+  const sample = {metricId:"rate",period:"W48",value:10,numerator:20,denominator:4,quality:"OBSERVADO" as const,coverage:"completo" as const,source:"Registro",capturedAt:"W48"};
+  require(calculateMetric(rate,[sample]).current === 5, "Una tasa conserva su unidad.");
+  require(calculateMetric(rate,[{...sample, denominator:0}]).current === null, "Un denominador inválido deja la medición sin dato.");
+  require(calculateMetric(rate,[{...sample,quality:"SIN_DATO"}]).current === null, "Sin dato no puede producir un resultado observado.");
   const invalid = seedVdc();
   invalid.push({
     id: "cycle",

@@ -15,6 +15,7 @@ export type Change = {
 };
 export type View =
   | "inicio"
+  | "objetivos"
   | "mapa"
   | "vdc"
   | "gerencia"

@@ -1,4 +1,26 @@
 import { uid, type Entity } from "../shared";
+import type { StepType } from "./types";
+
+const readableStepType = (type: unknown): StepType => {
+  if (
+    typeof type === "string" &&
+    [
+      "start",
+      "end",
+      "activity",
+      "decision",
+      "handoff",
+      "evidence",
+      "queue",
+      "buffer",
+    ].includes(type)
+  )
+    return type as StepType;
+  if (["document", "system", "metric", "risk"].includes(String(type)))
+    return "evidence";
+  if (["automation", "approval"].includes(String(type))) return "handoff";
+  return "activity";
+};
 
 export function validateMap(items: Entity[]): string[] {
   const seen = new Set<string>();
@@ -69,28 +91,78 @@ export function readMap(raw: string): Entity[] {
       data: { name: "Proceso", color: "#376cad" },
       rev: 0,
     });
-  const steps: Entity[] = doc.nodes.map(
-    (n: Record<string, any>, i: number) => ({
+  const laneOrder = new Map(lanes.map((lane, index) => [lane.id, index]));
+  const allSameY =
+    new Set(
+      doc.nodes.map((node: Record<string, any>) =>
+        Number.isFinite(Number(node.position?.y)) ? Number(node.position.y) : 0,
+      ),
+    ).size <= 1;
+  const withinLane = new Map<string, number>();
+  const metricIdsByNode = new Map<string, string[]>();
+  for (const metric of Array.isArray(doc.metrics) ? doc.metrics : []) {
+    for (const nodeId of Array.isArray(metric.relatedNodeIds)
+      ? metric.relatedNodeIds
+      : []) {
+      metricIdsByNode.set(
+        nodeId,
+        [
+          ...(metricIdsByNode.get(nodeId) ?? []),
+          metric.id || metric.code,
+        ].filter(Boolean),
+      );
+    }
+  }
+  const steps: Entity[] = doc.nodes.map((n: Record<string, any>, i: number) => {
+    const laneId = n.laneId || lanes[0].id;
+    const laneIndex = laneOrder.get(laneId) ?? 0;
+    const positionIndex = withinLane.get(laneId) ?? 0;
+    withinLane.set(laneId, positionIndex + 1);
+    const projectByLane = lanes.length > 1 && allSameY;
+    return {
       id: n.id,
       kind: "step",
       rev: 0,
       data: {
         ...n,
         title: n.title || n.label || "Paso " + (i + 1),
-        type: n.type || "activity",
-        laneId: n.laneId || lanes[0].id,
+        type: readableStepType(n.type),
+        laneId,
         owner: n.responsible || n.owner || "",
-        x: Number(n.position?.x ?? i * 230),
-        y: Number(n.position?.y ?? 140),
+        x: projectByLane
+          ? 150 + positionIndex * 240
+          : Number(n.position?.x ?? i * 230),
+        y: projectByLane ? 110 + laneIndex * 158 : Number(n.position?.y ?? 140),
         status: n.status || "draft",
+        person: n.responsible || n.owner || "",
+        technology: Array.isArray(n.tools) ? n.tools.join(", ") : n.technology,
+        experts: Array.isArray(n.consulted) ? n.consulted : undefined,
+        metricIds: [
+          ...new Set([
+            ...(Array.isArray(n.metricIds) ? n.metricIds : []),
+            ...(metricIdsByNode.get(n.id) || []),
+          ]),
+        ],
+        legacy: { ...n },
       },
-    }),
-  );
+    };
+  });
   const edges: Entity[] = doc.edges.map((e: Record<string, any>) => ({
     id: e.id,
     kind: "edge",
     rev: 0,
-    data: { ...e, type: e.type || "sequence" },
+    data: {
+      ...e,
+      legacyType: e.type,
+      type: studioEdgeType(e.type),
+      label:
+        e.label ||
+        (e.type === "decision_yes"
+          ? "Sí"
+          : e.type === "decision_no"
+            ? "No"
+            : ""),
+    },
   }));
   const { nodes: _nodes, lanes: _lanes, edges: _edges, ...metadata } = doc;
   const meta: Entity = {
@@ -117,14 +189,46 @@ export function recoverOriginal(entities: Entity[]) {
       .map((e) => ({ ...e.data, id: e.id })),
     nodes: entities
       .filter((e) => e.kind === "step")
-      .map((e) => ({
-        ...e.data,
-        id: e.id,
-        responsible: e.data.owner,
-        position: { x: e.data.x, y: e.data.y },
-      })),
+      .map((e) => {
+        const { legacy, ...current } = e.data;
+        return {
+          ...legacy,
+          ...current,
+          id: e.id,
+          responsible: current.owner,
+          type:
+            legacy && readableStepType(legacy.type) === current.type
+              ? legacy.type
+              : current.type,
+          position: { x: current.x, y: current.y },
+        };
+      }),
     edges: entities
       .filter((e) => e.kind === "edge")
-      .map((e) => ({ ...e.data, id: e.id })),
+      .map((e) => {
+        const { legacyType, ...current } = e.data;
+        const reverse: Record<string, string> = {
+          rework: "feedback",
+          information: "evidence",
+          handoff: "sequence",
+        };
+        const type =
+          legacyType && studioEdgeType(legacyType) === current.type
+            ? legacyType
+            : (reverse[current.type] ?? current.type);
+        return { ...current, id: e.id, type };
+      }),
   };
+}
+
+function studioEdgeType(type: string | undefined) {
+  const aliases: Record<string, string> = {
+    decision_yes: "sequence",
+    decision_no: "sequence",
+    feedback: "rework",
+    evidence: "information",
+    metric_impact: "dependency",
+    automation: "handoff",
+  };
+  return type ? aliases[type] || type : "sequence";
 }

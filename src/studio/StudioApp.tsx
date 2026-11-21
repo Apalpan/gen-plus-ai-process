@@ -8,7 +8,8 @@ import {
   useState,
 } from "react";
 import {
-  Home,
+  LayoutDashboard,
+  Target,
   Workflow,
   Network,
   Factory,
@@ -27,7 +28,8 @@ import {
   Plus,
 } from "lucide-react";
 import Entry from "./Entry";
-import Overview, { BoardCreator, prefabricated } from "./Overview";
+import { BoardCreator, prefabricated } from "./Overview";
+import ManagementDashboard from "./ManagementDashboard";
 import {
   StudioContext,
   api,
@@ -64,9 +66,10 @@ type Pending = {
   userId: string;
 };
 const nav = [
-  ["inicio", "Inicio", Home],
+  ["inicio", "Dashboard", LayoutDashboard],
+  ["objetivos", "Objetivos", Target],
+  ["vdc", "Framework BDC", Network],
   ["mapa", "Mapa de proceso", Workflow],
-  ["vdc", "Interrelaciones VDC", Network],
   ["produccion", "Producción", Factory],
   ["gerencia", "Gerencial", Presentation],
   ["operacion", "Operativo", BarChart3],
@@ -102,6 +105,7 @@ export default function StudioApp() {
     [startupError, setStartupError] = useState(""),
     [toast, setToast] = useState(""),
     [rail, setRail] = useState(() => window.innerWidth >= 1000),
+    [showTracking, setShowTracking] = useState(true),
     [newOpen, setNewOpen] = useState(false),
     [sync, setSync] = useState("Al día"),
     [retry, setRetry] = useState<Pending | null>(null),
@@ -129,6 +133,7 @@ export default function StudioApp() {
     return () => clearTimeout(t);
   }, [toast]);
   function navigate(v: View, id?: string) {
+    if (nav.slice(4).some(([key]) => key === v)) setShowTracking(true);
     setView(v);
     if (id !== undefined) setSelection(id);
     if (window.innerWidth < 1000) setRail(false);
@@ -242,7 +247,13 @@ export default function StudioApp() {
       running = false,
       count = 0;
     const poll = async () => {
-      if (stopped || running || activeId.current !== id || document.visibilityState === "hidden") return;
+      if (
+        stopped ||
+        running ||
+        activeId.current !== id ||
+        document.visibilityState === "hidden"
+      )
+        return;
       running = true;
       try {
         const p = await api("/boards/" + id + "/presence", "POST", {
@@ -498,7 +509,11 @@ export default function StudioApp() {
               {Math.max(1, presence.length)}
             </button>
             <span className="st-identity">
-              {user.guest ? (isCloud ? "Demo privada" : "Demo local") : user.name}
+              {user.guest
+                ? isCloud
+                  ? "Demo privada"
+                  : "Demo local"
+                : user.name}
             </span>
             <button onClick={logout} aria-label="Cerrar sesión">
               <LogOut size={16} />
@@ -541,7 +556,7 @@ export default function StudioApp() {
                 <ChevronDown size={13} />
               </label>
               <nav>
-                {nav.map(([key, title, Icon]) => (
+                {nav.slice(0, 4).map(([key, title, Icon]) => (
                   <button
                     key={key}
                     aria-current={view === key ? "page" : undefined}
@@ -552,6 +567,29 @@ export default function StudioApp() {
                     {title}
                   </button>
                 ))}
+                <button
+                  className="st-nav-disclosure"
+                  aria-expanded={showTracking}
+                  aria-controls="tracking-nav"
+                  onClick={() => setShowTracking(!showTracking)}
+                >
+                  Seguimiento y equipo <ChevronDown size={14} />
+                </button>
+                {showTracking && (
+                  <div id="tracking-nav">
+                    {nav.slice(4).map(([key, title, Icon]) => (
+                      <button
+                        key={key}
+                        aria-current={view === key ? "page" : undefined}
+                        className={view === key ? "active" : ""}
+                        onClick={() => navigate(key)}
+                      >
+                        <Icon size={17} />
+                        {title}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </nav>
               <div className="st-rail-foot">
                 {canEdit && (
@@ -576,7 +614,18 @@ export default function StudioApp() {
             fallback={<div className="st-loading">Abriendo vista…</div>}
           >
             {view === "inicio" ? (
-              <Overview newBoard={() => setNewOpen(true)} />
+              <ManagementDashboard
+                workspace={space?.name || "Mi espacio"}
+                newBoard={() => setNewOpen(true)}
+                openMap={async (id) => {
+                  try {
+                    if (id !== board.id) await openBoard(id);
+                    navigate("mapa");
+                  } catch (error) {
+                    setToast(String(error));
+                  }
+                }}
+              />
             ) : view === "mapa" ? (
               <Editor />
             ) : view === "ice" ? (

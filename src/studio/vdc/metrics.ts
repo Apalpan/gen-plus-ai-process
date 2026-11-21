@@ -13,6 +13,7 @@ export interface MetricResult {
   previous: number | null;
   delta: number | null;
   target: number;
+  comparison: MetricData["comparison"];
   unit: string;
   status: "en_meta" | "fuera_meta" | "sin_dato";
   quality: DataQuality;
@@ -29,12 +30,24 @@ export function calculateMetric(
   );
   const latest = ordered[ordered.length - 1];
   const previous = ordered[ordered.length - 2];
-  const observationValue = (observation: ObservationData | undefined) =>
-    observation?.numerator !== undefined &&
-    observation.denominator !== undefined &&
-    observation.denominator > 0
-      ? (observation.numerator / observation.denominator) * 100
-      : (observation?.value ?? null);
+  function observationValue(observation: ObservationData | undefined) {
+    if (!observation || observation.quality === "SIN_DATO") return null;
+    if (
+      observation.numerator !== undefined ||
+      observation.denominator !== undefined
+    ) {
+      const { numerator, denominator } = observation;
+      if (
+        !Number.isFinite(numerator) ||
+        !Number.isFinite(denominator) ||
+        !denominator ||
+        denominator <= 0
+      )
+        return null;
+      return (numerator! / denominator) * (metric.unit === "%" ? 100 : 1);
+    }
+    return Number.isFinite(observation.value) ? observation.value : null;
+  }
   const current = observationValue(latest);
   const previousValue = observationValue(previous);
   const comparable = Boolean(
@@ -60,6 +73,7 @@ export function calculateMetric(
         ? null
         : current - previousValue,
     target,
+    comparison: compare,
     unit: metric.unit,
     status:
       current === null ? "sin_dato" : meetsTarget ? "en_meta" : "fuera_meta",

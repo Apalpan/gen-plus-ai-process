@@ -23,7 +23,12 @@ import type {
   VdcLinkData,
 } from "./types";
 
-export type VdcMode = "gerencia" | "operacion" | "vdc" | "produccion";
+export type VdcMode =
+  | "gerencia"
+  | "operacion"
+  | "vdc"
+  | "produccion"
+  | "objetivos";
 
 function percentage(value: number | null, unit: string): string {
   if (value === null) return "Sin dato";
@@ -65,14 +70,14 @@ function MetricCard({
         </span>
         {delta && (
           <span
-            className={`mb-1 text-xs font-semibold ${deltaValue !== null && deltaValue > 0 ? "text-emerald-700" : "text-red-700"}`}
+            className={`mb-1 text-xs font-semibold ${deltaValue === 0 ? "text-slate-600" : deltaValue !== null && (result.comparison === "gte" ? deltaValue > 0 : deltaValue < 0) ? "text-emerald-700" : "text-red-700"}`}
           >
             {delta} vs. corte anterior
           </span>
         )}
       </div>
       <div className="mt-2 text-[11px] text-[var(--gen-text-muted)]">
-        Meta {metric.comparison === "gte" ? "≥" : "≤"} {result.target}
+        Meta {result.comparison === "gte" ? "≥" : "≤"} {result.target}
         {metric.unit} · {result.period} · {result.coverage} · {result.quality}
       </div>
     </button>
@@ -394,7 +399,15 @@ function Scenario({ entities }: { entities: VdcEntity[] }) {
   );
 }
 
-function EntityEditor({ entities }: { entities: VdcEntity[] }) {
+function EntityEditor({
+  entities,
+  objectiveOnly = false,
+  close,
+}: {
+  entities: VdcEntity[];
+  objectiveOnly?: boolean;
+  close?: () => void;
+}) {
   const studio = useStudio();
   const selected = studio.selection
     ? entities.find((entity) => entity.id === studio.selection)
@@ -415,16 +428,26 @@ function EntityEditor({ entities }: { entities: VdcEntity[] }) {
       baseline: String(form.get("baseline") || "Pendiente"),
       horizon: String(form.get("horizon") || "Semanal"),
       acceptance: String(form.get("acceptance") || "Pendiente"),
-      scope: String(form.get("scope") || ""),
-      beneficiary: String(form.get("beneficiary") || ""),
-      result: String(form.get("result") || ""),
+      lane:
+        form.get("level") === "ProdO"
+          ? String(form.get("lane") || "")
+          : undefined,
       status: selected?.data.status || "sin_linea_base",
     };
-    await studio.apply(
-      [{ id, kind: "vdc-objective", data, expectedRev: selected?.rev }],
-      selected ? "Edita objetivo VDC" : "Crea objetivo VDC",
+    const ok = await studio.apply(
+      [
+        {
+          id,
+          kind: "vdc-objective",
+          data,
+          expectedRev: selected?.kind === "vdc-objective" ? selected.rev : 0,
+        },
+      ],
+      selected?.kind === "vdc-objective"
+        ? "Objetivo actualizado"
+        : "Objetivo creado",
     );
-    studio.select(id);
+    if (ok) studio.select(id);
   };
   const submitFactor = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -527,32 +550,39 @@ function EntityEditor({ entities }: { entities: VdcEntity[] }) {
     <section className="rounded-card border border-[var(--gen-border)] bg-white p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-bold">Ficha VDC</h2>
+          <h2 className="font-bold">
+            {objectiveOnly ? "Ficha del objetivo" : "Ficha VDC"}
+          </h2>
           <p className="text-xs text-[var(--gen-text-muted)]">
             Editar crea una revisión compartida.
           </p>
         </div>
         <button
           className="text-xs text-brand-600 underline"
-          onClick={() => studio.select(null)}
+          onClick={() => {
+            studio.select(null);
+            close?.();
+          }}
         >
           Cerrar
         </button>
       </div>
-      <div className="mt-4 flex gap-1 rounded-btn bg-slate-100 p-1">
-        {tabs.map((item) => (
-          <button
-            key={item.kind}
-            onClick={() => {
-              setTab(item.kind);
-              studio.select(null);
-            }}
-            className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${tab === item.kind ? "bg-white text-brand-600 shadow-sm" : "text-slate-500"}`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {!objectiveOnly && (
+        <div className="mt-4 flex gap-1 rounded-btn bg-slate-100 p-1">
+          {tabs.map((item) => (
+            <button
+              key={item.kind}
+              onClick={() => {
+                setTab(item.kind);
+                studio.select(null);
+              }}
+              className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${tab === item.kind ? "bg-white text-brand-600 shadow-sm" : "text-slate-500"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
       {tab === "vdc-objective" && (
         <form
           className="mt-4 space-y-3"
@@ -575,9 +605,22 @@ function EntityEditor({ entities }: { entities: VdcEntity[] }) {
               defaultValue={objectiveData?.level ?? "ProdO"}
               className="mt-1 w-full rounded-btn border p-2.5"
             >
-              <option>CO</option>
-              <option>PO</option>
-              <option>ProdO</option>
+              <option value="CO">Cliente · CO</option>
+              <option value="PO">Proyecto · PO</option>
+              <option value="ProdO">Producción · ProdO</option>
+            </select>
+          </label>
+          <label className="block text-xs font-semibold">
+            Área del objetivo de producción
+            <select
+              name="lane"
+              defaultValue={objectiveData?.lane || ""}
+              className="mt-1 w-full rounded-btn border p-2.5"
+            >
+              <option value="">Sin asignar</option>
+              <option>VIA/BIM</option>
+              <option>ICE</option>
+              <option>PPM</option>
             </select>
           </label>
           <Field
@@ -771,6 +814,7 @@ function Field({
       <input
         name={name}
         type={type}
+        step={type === "number" ? "any" : undefined}
         defaultValue={initial}
         required={name === "title" || name === "reason"}
         className="mt-1 w-full rounded-btn border border-[var(--gen-border)] bg-white px-3 py-2.5 text-sm text-[var(--gen-text)] focus:border-brand-500"
@@ -853,6 +897,8 @@ function RelationNavigator({ entities }: { entities: VdcEntity[] }) {
 function ObservationEntry({ entities }: { entities: VdcEntity[] }) {
   const studio = useStudio();
   const metrics = entitiesOf<MetricData>(entities, "vdc-metric");
+  const [metricId, setMetricId] = useState("");
+  const active = metrics.find((item) => item.id === metricId) || metrics[0];
   if (!studio.canEdit) return null;
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -860,10 +906,12 @@ function ObservationEntry({ entities }: { entities: VdcEntity[] }) {
     const form = new FormData(element);
     const numerator = Number(form.get("numerator"));
     const denominator = Number(form.get("denominator"));
+    const percent = active?.data.unit === "%";
     if (
-      !Number.isFinite(numerator) ||
-      !Number.isFinite(denominator) ||
-      denominator <= 0
+      percent &&
+      (!Number.isFinite(numerator) ||
+        !Number.isFinite(denominator) ||
+        denominator <= 0)
     ) {
       studio.notify("Ingresa numerador y denominador válidos.");
       return;
@@ -873,9 +921,12 @@ function ObservationEntry({ entities }: { entities: VdcEntity[] }) {
       !ref ||
       !String(form.get("period") || "").trim() ||
       !String(form.get("source") || "").trim() ||
-      !String(form.get("numerator") || "").trim() ||
-      numerator < 0 ||
-      numerator > denominator
+      (percent
+        ? !String(form.get("numerator") || "").trim() ||
+          numerator < 0 ||
+          numerator > denominator
+        : !String(form.get("directValue") || "").trim() ||
+          !Number.isFinite(Number(form.get("directValue"))))
     ) {
       studio.notify(
         "Completa indicador, fuente, periodo y cantidades válidas.",
@@ -887,10 +938,10 @@ function ObservationEntry({ entities }: { entities: VdcEntity[] }) {
       comparisonAtCut: ref.data.comparison,
       metricId: String(form.get("metricId")),
       period: String(form.get("period")),
-      numerator,
-      denominator,
-      sampleSize: denominator,
-      value: (numerator / denominator) * 100,
+      ...(percent ? { numerator, denominator, sampleSize: denominator } : {}),
+      value: percent
+        ? (numerator / denominator) * 100
+        : Number(form.get("directValue")),
       quality: String(form.get("quality")) as ObservationData["quality"],
       coverage: String(form.get("coverage")) as ObservationData["coverage"],
       source: String(form.get("source")),
@@ -921,8 +972,7 @@ function ObservationEntry({ entities }: { entities: VdcEntity[] }) {
     <section className="rounded-card border border-[var(--gen-border)] bg-white p-4">
       <h3 className="text-sm font-bold">Ingresar corte</h3>
       <p className="mt-1 text-xs text-[var(--gen-text-muted)]">
-        El valor se calcula como numerador / denominador. Fuente y cobertura son
-        obligatorias.
+        Registra el corte con su periodo, fuente y cobertura.
       </p>
       <form
         onSubmit={(event) => void submit(event)}
@@ -932,6 +982,8 @@ function ObservationEntry({ entities }: { entities: VdcEntity[] }) {
           Métrica
           <select
             name="metricId"
+            value={active?.id || ""}
+            onChange={(event) => setMetricId(event.target.value)}
             className="mt-1 w-full rounded-btn border p-2"
           >
             {metrics.map((metric) => (
@@ -941,14 +993,30 @@ function ObservationEntry({ entities }: { entities: VdcEntity[] }) {
             ))}
           </select>
         </label>
-        <Field name="period" label="Periodo" initial="2026-W49" />
-        <Field name="numerator" label="Numerador" initial="" type="number" />
-        <Field
-          name="denominator"
-          label="Denominador"
-          initial=""
-          type="number"
-        />
+        <Field name="period" label="Periodo" initial="" />
+        {active?.data.unit === "%" ? (
+          <>
+            <Field
+              name="numerator"
+              label="Numerador"
+              initial=""
+              type="number"
+            />
+            <Field
+              name="denominator"
+              label="Denominador"
+              initial=""
+              type="number"
+            />
+          </>
+        ) : (
+          <Field
+            name="directValue"
+            label={`Valor medido (${active?.data.unit || "unidad"})`}
+            initial=""
+            type="number"
+          />
+        )}
         <Field name="source" label="Fuente" initial="" />
         <label className="text-xs font-semibold">
           Cobertura
@@ -1187,6 +1255,177 @@ function Dashboard({
   );
 }
 
+const frameworkLevels = [
+  {
+    id: "CO",
+    name: "Cliente",
+    question: "¿Qué podrá hacer el cliente con el producto entregado?",
+  },
+  {
+    id: "PO",
+    name: "Proyecto",
+    question: "¿Qué entrega se aceptará y en qué condiciones?",
+  },
+  {
+    id: "ProdO",
+    name: "Producción",
+    question: "¿Qué desempeño debe lograr el equipo durante el trabajo?",
+  },
+  {
+    id: "FC",
+    name: "Factor controlable",
+    question:
+      "¿Qué acción puede repetir el equipo para influir en ese resultado?",
+  },
+];
+
+function FrameworkGuide() {
+  const [review, setReview] = useState(false);
+  const studio = useStudio();
+  const levels = review ? [...frameworkLevels].reverse() : frameworkLevels;
+  return (
+    <details className="fw-guide">
+      <summary>Cómo leer el framework</summary>
+      <p>
+        Virtual Design and Construction (VDC) relaciona el producto que se
+        entrega, la organización que decide y el proceso que ejecuta el trabajo.
+        BIM/VIA permite coordinar el producto, ICE reúne a los decisores y PPM
+        gestiona el flujo de producción.
+      </p>
+      <div className="fw-toggle" aria-label="Sentido del recorrido">
+        <button aria-pressed={!review} onClick={() => setReview(false)}>
+          Diseñar desde el objetivo
+        </button>
+        <button aria-pressed={review} onClick={() => setReview(true)}>
+          Revisar desde la evidencia
+        </button>
+      </div>
+      <div className="fw-routes">
+        {levels.map((level) => {
+          const candidate = studio.entities.find((e) =>
+            level.id === "FC"
+              ? e.kind === "vdc-factor"
+              : e.kind === "vdc-objective" && e.data.level === level.id,
+          );
+          return (
+            <div key={level.id}>
+              <strong>
+                {level.name} <small>{level.id}</small>
+              </strong>
+              <p>{level.question}</p>
+              {candidate && (
+                <button onClick={() => studio.select(candidate.id)}>
+                  Ubicar en el mapa
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p>
+        {review
+          ? "Revisa quién ejecutó el control, su evidencia y el corte de la métrica. Contrasta la contribución esperada antes de mantener o cambiar la acción."
+          : "Define el valor para el cliente y desciende hasta una acción con responsable y frecuencia. Cada vínculo expresa una contribución que podrás contrastar con mediciones."}
+      </p>
+    </details>
+  );
+}
+
+function Objectives({ entities }: { entities: VdcEntity[] }) {
+  const studio = useStudio();
+  const objectives = entitiesOf<ObjectiveData>(entities, "vdc-objective");
+  const [editing, setEditing] = useState(false);
+  const indicators = metricResults(entities);
+  function edit(id: string | null) {
+    studio.select(id);
+    setEditing(true);
+  }
+  if (editing && studio.canEdit)
+    return (
+      <div className="max-w-2xl">
+        <EntityEditor
+          key={studio.selection || "new"}
+          entities={entities}
+          objectiveOnly
+          close={() => setEditing(false)}
+        />
+      </div>
+    );
+  return (
+    <div className="space-y-4">
+      <div className="fw-actions">
+        <button className="mg-secondary" onClick={() => studio.navigate("vdc")}>
+          Ver mapa de interrelaciones
+        </button>
+        {studio.canEdit && (
+          <button className="st-primary" onClick={() => edit(null)}>
+            Crear objetivo
+          </button>
+        )}
+      </div>
+      {frameworkLevels.slice(0, 3).map((level) => {
+        const group = objectives.filter((item) => item.data.level === level.id);
+        return (
+          <section key={level.id} className="fw-objectives">
+            <header>
+              <h2>{level.name}</h2>
+              <span>
+                {level.id} · {group.length}{" "}
+                {group.length === 1 ? "objetivo" : "objetivos"}
+              </span>
+            </header>
+            {group.map((item) => {
+              const observed = indicators.filter(
+                (x) =>
+                  x.metric.objectiveId === item.id && x.result.current !== null,
+              );
+              return (
+                <div
+                  className="fw-objective"
+                  key={item.id}
+                  data-selected={item.id === studio.selection}
+                >
+                  <div>
+                    <small>
+                      {item.data.code}
+                      {item.data.lane && " · " + item.data.lane}
+                    </small>
+                    <h3>{item.data.title}</h3>
+                    <p>
+                      {item.data.owner || "Por asignar"} ·{" "}
+                      {item.data.horizon || "Sin horizonte"}
+                    </p>
+                  </div>
+                  <div>
+                    <small>Meta</small>
+                    <strong>{item.data.target || "Sin definir"}</strong>
+                    <p>
+                      {observed.length
+                        ? observed.length + " indicadores con corte"
+                        : "Sin medición vinculada"}
+                    </p>
+                  </div>
+                  <div className="fw-actions">
+                    <button onClick={() => studio.navigate("vdc", item.id)}>
+                      Ver vínculos
+                    </button>
+                    {studio.canEdit && (
+                      <button onClick={() => edit(item.id)}>Editar</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {!group.length && (
+              <p className="fw-no-objective">{level.question}</p>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 export function VdcView({ mode }: { mode: VdcMode }) {
   const studio = useStudio();
   const entities = studio.entities as VdcEntity[];
@@ -1200,31 +1439,40 @@ export function VdcView({ mode }: { mode: VdcMode }) {
       <div className="mx-auto max-w-7xl">
         <header className="mb-6">
           <div className="text-xs font-bold uppercase tracking-[.12em] text-brand-600">
-            VDC · CO / PO / ProdO / FC
+            {studio.board.title}
           </div>
           <h1 className="mt-1 font-display text-3xl font-bold text-navy-900">
             {mode === "vdc"
-              ? "Mapa de interrelaciones"
-              : mode === "gerencia"
-                ? "Dashboard gerencial"
-                : mode === "operacion"
-                  ? "Dashboard operativo"
-                  : "Producción y PPM"}
+              ? "Framework BDC"
+              : mode === "objetivos"
+                ? "Objetivos"
+                : mode === "gerencia"
+                  ? "Dashboard gerencial"
+                  : mode === "operacion"
+                    ? "Dashboard operativo"
+                    : "Producción y PPM"}
           </h1>
           <p className="mt-2 text-sm text-[var(--gen-text-muted)]">
-            {summary} · Cada relación declara una hipótesis y su revisión.
+            {mode === "vdc"
+              ? "Mapa de interrelaciones · " + summary
+              : mode === "objetivos"
+                ? "Del valor para el cliente a los resultados que el equipo puede medir."
+                : summary}
           </p>
         </header>
         {mode === "vdc" && (
           <div className="space-y-5">
+            <FrameworkGuide />
             <RelationshipGraph />
             <MetricRegistry />
             <div className="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
               <CifeTable entities={entities} />
-              <EntityEditor
-                key={studio.selection || "nuevo"}
-                entities={entities}
-              />
+              {studio.canEdit && (
+                <EntityEditor
+                  key={studio.selection || "nuevo"}
+                  entities={entities}
+                />
+              )}
             </div>
             <div className="grid gap-5 xl:grid-cols-2">
               <RelationNavigator entities={entities} />
@@ -1232,6 +1480,7 @@ export function VdcView({ mode }: { mode: VdcMode }) {
             </div>
           </div>
         )}
+        {mode === "objetivos" && <Objectives entities={entities} />}
         {mode === "gerencia" && (
           <Dashboard entities={entities} operational={false} />
         )}{" "}

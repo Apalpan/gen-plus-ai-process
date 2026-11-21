@@ -33,17 +33,18 @@ function analyze(entities, request) {
         );
       const cut = cuts[0];
       const raw = cut?.data;
-      const value =
-        raw?.numerator != null &&
-        raw?.denominator > 0 &&
-        metric.data.unit === "%"
-          ? (100 * raw.numerator) / raw.denominator
-          : raw?.value;
-      const target = Number(metric.data.target);
+      let value = raw?.value;
+      if (raw?.numerator !== undefined || raw?.denominator !== undefined) {
+        value = Number.isFinite(raw.numerator) && raw.denominator > 0
+          ? (raw.numerator / raw.denominator) * (metric.data.unit === "%" ? 100 : 1) : null;
+      }
+      if (raw?.quality === "SIN_DATO") value = null;
+      const target = Number(raw?.targetAtCut ?? metric.data.target);
+      const comparison = raw?.comparisonAtCut ?? metric.data.comparison;
       const off =
         Number.isFinite(value) &&
         Number.isFinite(target) &&
-        (metric.data.comparison === "lte" ? value > target : value < target);
+        (comparison === "lte" ? value > target : value < target);
       return { metric, cut, value, target, off };
     })
     .filter((x) => x.cut);

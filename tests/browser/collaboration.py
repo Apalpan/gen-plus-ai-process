@@ -3,7 +3,7 @@ import tempfile
 import asyncio,json,secrets,time
 from pathlib import Path
 from playwright.async_api import async_playwright,expect
-BASE='http://127.0.0.1:5178'
+BASE=os.environ.get('AI_PROCESS_QA_URL','http://127.0.0.1:5178').rstrip('/')
 out=Path(os.environ.get('AI_PROCESS_QA_DIR',tempfile.mkdtemp(prefix='ai-process-qa-')))
 out.mkdir(parents=True,exist_ok=True)
 
@@ -13,7 +13,7 @@ async def main():
   cs=await asyncio.gather(*[b.new_context(viewport={'width':1440,'height':900}) for _ in range(5)])
   token=secrets.token_hex(5)
   async def post(c,path,data):
-   r=await c.request.post(BASE+'/api/'+path,data=data)
+   r=await c.request.post(BASE+'/api/'+path,data=data,headers={'Origin':BASE})
    assert r.ok,(r.status,await r.text())
    return await r.json()
   async def reg(i):
@@ -43,7 +43,7 @@ async def main():
   data=(await resp.json())['board']; actual={e['data']['title'] for e in data['entities'] if e['kind']=='step'}
   assert actual=={f'Paso revisado {i}' for i in range(5)} and data['boardRev']==5,(actual,data['boardRev'])
   await pages[0].screenshot(path=str(out/'cinco-editores.png'))
-  result={'contextos_independientes':5,'ediciones_ui_simultaneas':5,'sesiones_con_el_mismo_resultado':5,'revision_tablero':data['boardRev'],'convergencia_local_segundos':elapsed}
+  result={'contextos_independientes':5,'ediciones_ui_simultaneas':5,'sesiones_con_el_mismo_resultado':5,'revision_tablero':data['boardRev'],'convergencia_segundos':elapsed}
   (out/'cinco-editores.json').write_text(json.dumps(result,indent=2),encoding='utf8')
   print(result)
   await b.close()

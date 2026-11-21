@@ -108,7 +108,7 @@ export function MetricRegistry() {
       ...d,
       code: item?.data.code || "KPI-" + (all.length + 1),
       target: Number(d.target),
-      unit: "%",
+      unit: String(item?.data.unit || d.unit || "%").trim(),
       comparison: d.comparison || "gte",
       effectiveFrom: new Date().toISOString().slice(0, 10),
     };
@@ -128,7 +128,7 @@ export function MetricRegistry() {
       <label className="st-field">
         Ficha de medición
         <select value={id} onChange={(e) => setId(e.target.value)}>
-          <option value="">Nueva métrica porcentual</option>
+          <option value="">Nueva métrica</option>
           {all.map((x) => (
             <option key={x.id} value={x.id}>
               {x.data.label}
@@ -157,7 +157,8 @@ export function MetricRegistry() {
             {[
               ["label", "Indicador"],
               ["formula", "Fórmula y cohorte"],
-              ["target", "Meta (%)"],
+              ["target", "Meta"],
+              ["unit", "Unidad de medida"],
               ["owner", "Responsable"],
               ["frequency", "Frecuencia"],
               ["source", "Fuente"],
@@ -168,9 +169,10 @@ export function MetricRegistry() {
                 <input
                   name={key}
                   type={key === "target" ? "number" : "text"}
+                  readOnly={key === "unit" && Boolean(item)}
                   step="any"
                   required
-                  defaultValue={item?.data[key] ?? ""}
+                  defaultValue={item?.data[key] ?? (key === "unit" ? "%" : "")}
                 />
               </label>
             ))}
