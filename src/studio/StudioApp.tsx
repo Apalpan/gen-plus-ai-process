@@ -181,8 +181,9 @@ export default function StudioApp() {
       entities,
     });
     await openBoard(data.board.id);
-    setSpaces((await api("/workspaces")).workspaces);
-    navigate("mapa");
+    const refreshed: Space[] = (await api("/workspaces")).workspaces;
+    setSpaces(refreshed);
+    return refreshed;
   }
   async function enter(u: User) {
     identity.current = u.id;
@@ -212,12 +213,11 @@ export default function StudioApp() {
           "El enlace requiere acceso a otro espacio. Abierto tu proceso disponible.",
         );
     } else {
-      await createBoard(
+      ws = await createBoard(
         ws[0].id,
         "Producción de prefabricados",
         prefabricated(),
       );
-      ws = (await api("/workspaces")).workspaces;
     }
     setSpaces(ws);
     setView("inicio");
@@ -413,10 +413,13 @@ export default function StudioApp() {
     return (
       <Entry
         onUser={async (u) => {
+          setReady(false);
           try {
             await enter(u);
           } catch (e) {
             setStartupError(String(e));
+          } finally {
+            setReady(true);
           }
         }}
       />
@@ -444,6 +447,7 @@ export default function StudioApp() {
   const createCopy = async (title: string, items: Entity[]) => {
     try {
       await createBoard(board.workspaceId, title, items);
+      navigate("mapa");
       return true;
     } catch (e) {
       setToast(String(e));
@@ -592,6 +596,7 @@ export default function StudioApp() {
             create={async (n, es) => {
               try {
                 await createBoard(board.workspaceId, n, es);
+                navigate("mapa");
               } catch (e) {
                 setToast(String(e));
                 throw e;
